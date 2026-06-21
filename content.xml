@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content
+  id="hotkey_api"
+  name="Hotkey API (POC)"
+  author="Chem O`Dun"
+  version="100"
+  date="2026-06-21"
+  save="false"
+  sync="false"
+  enabled="true"
+  description="Proof-of-concept template for a custom hotkey registration framework: defines one map-only test action, lets the player bind a key to it via a Settings page entry, and reacts to it through a new generic UIX callback in the Map menu's hotkey dispatch.">
+  <text language="44"
+    description="Proof-of-concept template for a custom hotkey registration framework: defines one map-only test action, lets the player bind a key to it via a Settings page entry, and reacts to it through a new generic UIX callback in the Map menu's hotkey dispatch."></text>
+  <dependency version="800"></dependency>
+  <dependency id="kuerteeUIExtensionsAndHUD" optional="false" name="kuertee UI Extensions and HUD" version="804"></dependency>
+  <dependency id="ws_2042901274" optional="false" name="SirNukes Mod Support APIs" version="195"></dependency>
+</content>

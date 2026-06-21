@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon name="ego_debuglog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/coreaddon.xsd">
+  <environment type="menus">
+    <file name="debuglog.lua" />
+    <dependency name="ego_viewHelper" />
+    <savedvariable name="__CORE_DEBUGLOG_LOG" storage="userdata" />
+    <bindinggroup id="debuglog" context="INPUT_CONTEXT_ADDON_DEBUGLOG" alwaysactive="true">
+      <binding action="INPUT_ACTION_OPEN_DEBUG_LOG" />
+      <binding action="INPUT_ACTION_DEBUG_F12" />
+    </bindinggroup>
+  </environment>
+</addon>

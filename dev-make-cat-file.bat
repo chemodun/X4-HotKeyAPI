@@ -1,0 +1,3 @@
+..\..\XRCatTool.exe -dump -include "ui/addons/ego_debuglog/ui.xml" -in "." -out "subst_01.cat"
+
+set /p DUMMY=Hit ENTER to exit...
