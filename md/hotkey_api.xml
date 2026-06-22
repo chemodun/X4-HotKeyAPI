@@ -77,11 +77,12 @@
             - String, unique identifier of this action, chosen by the calling mod.
             - The same id always maps to the same physical hotkey slot once assigned.
           * area = 'any'
-            - String, one of 'map' / 'space' / 'any' - where the action is allowed
+            - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
               to fire and what "selected object" means for isObjectRequired.
+              'pilot' means the player is piloting a ship (no menu open).
           * isObjectRequired = false
             - Boolean. If true, the action is skipped (with a fail-sound) unless a
-              map selection ('map') or ship target ('space') is currently present.
+              map selection ('map') or ship target ('pilot') is currently present.
           * name
             - String, display name shown for this action's row in the General
               Controls keybinding list.

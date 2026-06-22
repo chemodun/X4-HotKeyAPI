@@ -16,6 +16,8 @@ local C = ffi.C
 ffi.cdef [[
 	typedef uint64_t UniverseID;
 	UniverseID GetPlayerID(void);
+	UniverseID GetPlayerOccupiedShipID(void);
+	const char* GetPlayerCurrentControlGroup(void);
 ]]
 
 local PAGE_ID = 1972092431
@@ -314,6 +316,21 @@ function hotkeyApi.OnRegisterAction(_, _)
   end
 end
 
+-- More precise than just "no menu is shown" - that would also be true while
+-- walking around inside a ship/station, or sitting docked with no menu open.
+-- Mirrors the check vanilla's ego_detailmonitor/menu_docked.lua uses to
+-- decide whether to pop the docked menu: occupies a ship, that ship isn't
+-- docked, and the player's own control post is specifically the pilot seat
+-- (not a turret/secondary gunner position).
+local function IsActuallyPiloting()
+  local occupiedShip = ConvertStringTo64Bit(tostring(C.GetPlayerOccupiedShipID()))
+  if occupiedShip == 0 then
+    return false
+  end
+  local controlPost = ffi.string(C.GetPlayerCurrentControlGroup())
+  return (controlPost == "pilotcontrol") and (not GetComponentData(occupiedShip, "isdocked"))
+end
+
 local function detectCurrentArea()
   local currentMenu = nil
   for _, menu in ipairs(Menus) do
@@ -328,13 +345,15 @@ local function detectCurrentArea()
     else
       return "other"
     end
+  elseif IsActuallyPiloting() then
+    return "pilot"
   else
-    return "space"
+    return "other"
   end
 end
 
 -- Returns the selected/targeted object component id for the given area, or
--- nil. Only "map"/"space" carry a notion of "selection" at all.
+-- nil. Only "map"/"pilot" carry a notion of "selection" at all.
 local function GetSelectedObjectForArea(area)
   if area == "map" and mapMenu then
     local selectedComponent = nil
@@ -348,7 +367,7 @@ local function GetSelectedObjectForArea(area)
       end
     end
     return selectedComponent
-  elseif area == "space" then
+  elseif area == "pilot" then
     local target = GetPlayerTarget()
     if target and (target ~= 0) then
       return target
