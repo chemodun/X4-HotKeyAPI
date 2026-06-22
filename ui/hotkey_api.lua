@@ -19,6 +19,7 @@ ffi.cdef [[
 ]]
 
 local PAGE_ID = 1972092431
+local CONTROLS_PAGE_ID = "hotkey_api_controls"
 
 local function debugLog(fmt, ...)
   if select("#", ...) > 0 then
@@ -202,7 +203,7 @@ function hotkeyApi.OnRegisterAction(_, _)
   }
   SaveBoundHotkeys()
 
-  if optionsMenu and (optionsMenu.currentOption == "keyboard_space") then
+  if optionsMenu and (optionsMenu.currentOption == CONTROLS_PAGE_ID) then
     optionsMenu.refresh()
   end
 end
@@ -295,24 +296,17 @@ end
 -- Ego's own controlFunctions entries (seen only in the low hundreds).
 local FUNCTION_KEY_BASE = 100000
 
--- ADDON_DETAILMONITOR_I/etc. live in controlsorder.space ("Menu Access"
--- group), so our rows go there too, as our own group. Once inserted, the
--- existing remap/add/remove/reset button machinery in
--- menu.displayControlRow/menu.buttonControl/menu.remapInputInternal handles
--- everything generically by controltype+code - no further hook needed there.
+-- Own submenu (not appended to "General Controls" anymore): routed through
+-- menu.displayControls (proper remap/add/remove/reset buttons, same as
+-- ADDON_DETAILMONITOR_I/etc.) via the new generic
+-- menu.uix_callbacks["submenuHandler_isControlsPage"][optionParameter] hook
+-- added to gameoptions.xpl's menu.submenuHandler. menu.controlsorder starts
+-- empty for any optionParameter not one of the 3 vanilla keyboard pages, so
+-- this hook is the only thing populating it - no stale-row removal needed
+-- the way the old "appended to keyboard_space" version required.
 function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config)
-  if optionParameter ~= "keyboard_space" then
+  if optionParameter ~= CONTROLS_PAGE_ID then
     return controlsorder
-  end
-
-  -- controlsorder is the same persistent config.input.controlsorder.space
-  -- table every time this page renders (not a fresh copy) - remove any
-  -- stale group from a previous render before inserting a current one, so
-  -- repeated page views neither duplicate nor go stale.
-  for i = #controlsorder, 1, -1 do
-    if controlsorder[i].id == "hotkey_api_group" then
-      table.remove(controlsorder, i)
-    end
   end
 
   local groupRow = {
@@ -339,13 +333,55 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config
     end
   end
 
-  debugLog("OnDisplayControlsOrder: rendering %d bound row(s)", rowCount)
+  debugLog("OnDisplayControlsOrder: rendering %d bound row(s) on own page", rowCount)
 
-  if rowCount > 0 then
-    table.insert(controlsorder, groupRow)
-  end
+  table.insert(controlsorder, groupRow)
 
   return controlsorder
+end
+
+-- Predicate callback for gameoptions.xpl's "submenuHandler_isControlsPage"
+-- hook, registered via the normal registerCallback id-keyed mechanism (not a
+-- flat presence-table) so any number of mods can each register their own
+-- predicate independently. Called with the page/option being checked
+-- (optionParameter in menu.submenuHandler, menu.currentOption in
+-- menu.checkInputSource) and must return true only for our own page.
+function hotkeyApi.IsControlsPage(optionParameter)
+  return optionParameter == CONTROLS_PAGE_ID
+end
+
+-- Injects a navigation row into the vanilla "input" page (Options > Settings
+-- > Controls), right after "Menu Navigation" (id "keyboard_menus"), pointing
+-- at our own CONTROLS_PAGE_ID. config.optionDefinitions["input"] is the same
+-- persistent table every render - check before inserting so repeated views
+-- don't duplicate the row.
+function hotkeyApi.OnDisplayOptions(options, _config)
+  if not (optionsMenu and (optionsMenu.currentOption == "input")) then
+    return options
+  end
+  if type(options) ~= "table" then
+    return options
+  end
+
+  local insertAt = nil
+  for i, row in ipairs(options) do
+    if (type(row) == "table") and (row.id == "hotkey_api_nav") then
+      -- Already inserted on a previous render.
+      return options
+    end
+    if (type(row) == "table") and (row.id == "keyboard_menus") then
+      insertAt = i + 1
+    end
+  end
+
+  table.insert(options, insertAt or (#options + 1), {
+    id = "hotkey_api_nav",
+    name = function() return ReadText(PAGE_ID, 10) end,
+    submenu = CONTROLS_PAGE_ID,
+  })
+  debugLog("OnDisplayOptions: inserted hotkey_api_nav row at position %d", insertAt or (#options + 1))
+
+  return options
 end
 
 local function Init()
@@ -360,7 +396,15 @@ local function Init()
   debugLog("Init: OptionsMenu %s", optionsMenu and "found" or "NOT found")
   if optionsMenu and (type(optionsMenu.registerCallback) == "function") then
     optionsMenu.registerCallback("displayControls_modifyControlsOrder", hotkeyApi.OnDisplayControlsOrder)
-    debugLog("Init: registered displayControls_modifyControlsOrder callback")
+    optionsMenu.registerCallback("displayOptions_modifyOptions", hotkeyApi.OnDisplayOptions)
+    debugLog("Init: registered displayControls_modifyControlsOrder/displayOptions_modifyOptions callbacks")
+
+    -- Declare our own page to menu.submenuHandler's/menu.checkInputSource's
+    -- generic hook, so it routes through menu.displayControls (proper remap
+    -- buttons) and accepts keyboard input while remapping, instead of falling
+    -- through to the plain option-row renderer / rejecting all input.
+    optionsMenu.registerCallback("submenuHandler_isControlsPage", hotkeyApi.IsControlsPage)
+    debugLog("Init: declared '%s' as a controls page", CONTROLS_PAGE_ID)
   end
 
   SetScript("onHotkey", hotkeyApi.onHotKey)
