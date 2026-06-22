@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <diff>
-    <!-- Free pool: every reusable INPUT_ACTION_DEBUG_* id (excludes
-         INPUT_ACTION_TOGGLE_DEBUG_INPUT and INPUT_ACTION_DEBUG_FEATURE_1-4,
-         which keep real debug functionality wired up). Removed from their
-         original debug contexts and reassigned to INPUT_CONTEXT_ADDON_DEBUGLOG
-         (always-active, see ui/addons/ego_debuglog/ui.xml) so the whole pool
-         is live everywhere, not menu/mode specific. -->
+    <!-- Working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12 (48 actions, numeric
+         ids 23-70, fully confirmed via in-game capture - see
+         claude/mod-hotkey_api.md). INSERT/DELETE/NUMPAD0-9/SPACE/PAGEUP/PAGEDOWN
+         are deliberately NOT included (mixed/unresolved numeric-id confidence). -->
 
-    <!-- INPUT_CONTEXT_DEBUG_BASE: INSERT only lives here -->
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_INSERT']" />
+    <!-- INPUT_CONTEXT_DEBUG_BASE: only F1-F12 live here -->
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F1']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F2']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F3']" />
@@ -22,7 +19,7 @@
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F11']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F12']" />
 
-    <!-- INPUT_CONTEXT_DEBUG: everything else (and F1-F12 again, also listed here) -->
+    <!-- INPUT_CONTEXT_DEBUG: 0-9, A-Z, F1-F12 (F1-F12 also listed here) -->
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_1']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_2']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_3']" />
@@ -71,24 +68,10 @@
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F10']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F11']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F12']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_PAGEDOWN']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_PAGEUP']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_SPACE']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD0']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD1']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD2']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD3']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD4']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD5']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD6']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD7']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD8']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD9']" />
-    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_DELETE']" />
 
-    <!-- Reassign the whole pool (63 actions) to the always-active debuglog context -->
+    <!-- Reassign the working pool (48 actions) to the always-active debuglog context -->
     <add sel="//context[@id='INPUT_CONTEXT_ADDON_DEBUGLOG']">
-        <action id="INPUT_ACTION_DEBUG_INSERT" />
+        <action id="INPUT_ACTION_DEBUG_0" />
         <action id="INPUT_ACTION_DEBUG_1" />
         <action id="INPUT_ACTION_DEBUG_2" />
         <action id="INPUT_ACTION_DEBUG_3" />
@@ -98,7 +81,6 @@
         <action id="INPUT_ACTION_DEBUG_7" />
         <action id="INPUT_ACTION_DEBUG_8" />
         <action id="INPUT_ACTION_DEBUG_9" />
-        <action id="INPUT_ACTION_DEBUG_0" />
         <action id="INPUT_ACTION_DEBUG_A" />
         <action id="INPUT_ACTION_DEBUG_B" />
         <action id="INPUT_ACTION_DEBUG_C" />
@@ -137,19 +119,5 @@
         <action id="INPUT_ACTION_DEBUG_F10" />
         <action id="INPUT_ACTION_DEBUG_F11" />
         <action id="INPUT_ACTION_DEBUG_F12" />
-        <action id="INPUT_ACTION_DEBUG_PAGEDOWN" />
-        <action id="INPUT_ACTION_DEBUG_PAGEUP" />
-        <action id="INPUT_ACTION_DEBUG_SPACE" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD0" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD1" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD2" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD3" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD4" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD5" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD6" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD7" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD8" />
-        <action id="INPUT_ACTION_DEBUG_NUMPAD9" />
-        <action id="INPUT_ACTION_DEBUG_DELETE" />
     </add>
 </diff>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <diff>
     <add sel="//bindinggroup[@id='debuglog']">
-        <binding action="INPUT_ACTION_DEBUG_INSERT" />
+        <binding action="INPUT_ACTION_DEBUG_0" />
         <binding action="INPUT_ACTION_DEBUG_1" />
         <binding action="INPUT_ACTION_DEBUG_2" />
         <binding action="INPUT_ACTION_DEBUG_3" />
@@ -11,7 +11,6 @@
         <binding action="INPUT_ACTION_DEBUG_7" />
         <binding action="INPUT_ACTION_DEBUG_8" />
         <binding action="INPUT_ACTION_DEBUG_9" />
-        <binding action="INPUT_ACTION_DEBUG_0" />
         <binding action="INPUT_ACTION_DEBUG_A" />
         <binding action="INPUT_ACTION_DEBUG_B" />
         <binding action="INPUT_ACTION_DEBUG_C" />
@@ -50,19 +49,5 @@
         <binding action="INPUT_ACTION_DEBUG_F10" />
         <binding action="INPUT_ACTION_DEBUG_F11" />
         <binding action="INPUT_ACTION_DEBUG_F12" />
-        <binding action="INPUT_ACTION_DEBUG_PAGEDOWN" />
-        <binding action="INPUT_ACTION_DEBUG_PAGEUP" />
-        <binding action="INPUT_ACTION_DEBUG_SPACE" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD0" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD1" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD2" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD3" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD4" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD5" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD6" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD7" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD8" />
-        <binding action="INPUT_ACTION_DEBUG_NUMPAD9" />
-        <binding action="INPUT_ACTION_DEBUG_DELETE" />
     </add>
 </diff>

@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <diff>
-    <!-- Clear vanilla default keys for the whole reusable DEBUG_* pool, so
-         every slot starts genuinely unbound until a player/mod assigns it.
-         F1-F12 each have 2 default entries (plain + shift); everything else
-         has 1. PAGEUP/PAGEDOWN have no entries here (already unbound). -->
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_INSERT'][@code='INPUT_KEYCODE_INSERT']" />
+    <!-- Clear vanilla default keys for the working pool (DEBUG_0-9, A-Z, F1-F12
+         only - see libraries/contexts.xml), so every slot starts genuinely
+         unbound. F1-F12 have 2 default entries each (plain + shift). -->
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_1'][@code='INPUT_KEYCODE_1']" />
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_2'][@code='INPUT_KEYCODE_2']" />
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_3'][@code='INPUT_KEYCODE_3']" />
@@ -65,16 +63,4 @@
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_F11'][@code='INPUT_KEYCODE_F11_SHIFT']" />
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_F12'][@code='INPUT_KEYCODE_F12']" />
     <remove sel="//action[@id='INPUT_ACTION_DEBUG_F12'][@code='INPUT_KEYCODE_F12_SHIFT']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_DELETE'][@code='INPUT_KEYCODE_DELETE']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_SPACE'][@code='INPUT_KEYCODE_SPACE']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD0'][@code='INPUT_KEYCODE_NUMPAD0']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD1'][@code='INPUT_KEYCODE_NUMPAD1']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD2'][@code='INPUT_KEYCODE_NUMPAD2']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD3'][@code='INPUT_KEYCODE_NUMPAD3']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD4'][@code='INPUT_KEYCODE_NUMPAD4']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD5'][@code='INPUT_KEYCODE_NUMPAD5']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD6'][@code='INPUT_KEYCODE_NUMPAD6']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD7'][@code='INPUT_KEYCODE_NUMPAD7']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD8'][@code='INPUT_KEYCODE_NUMPAD8']" />
-    <remove sel="//action[@id='INPUT_ACTION_DEBUG_NUMPAD9'][@code='INPUT_KEYCODE_NUMPAD9']" />
 </diff>
