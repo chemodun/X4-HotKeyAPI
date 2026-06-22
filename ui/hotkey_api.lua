@@ -498,13 +498,13 @@ function hotkeyApi.UseCheckAllForRemap(controltype, controlcode)
   return IsOurFunctionCode(controltype, controlcode)
 end
 
--- Injects a navigation row into the vanilla "settings" page (Options >
--- Settings), parallel to "Controls"/"Display"/"Gfx"/etc, pointing at our own
--- MANAGEMENT_PAGE_ID. config.optionDefinitions["settings"] is the same
--- persistent table every render - check before inserting so repeated views
--- don't duplicate the row.
+-- Injects a navigation row into the vanilla "main" page (the top-level
+-- Options menu - Continue/Load/Save/.../Settings/Credits/...), right before
+-- the "Settings" row itself, pointing at our own MANAGEMENT_PAGE_ID.
+-- config.optionDefinitions["main"] is the same persistent table every
+-- render - check before inserting so repeated views don't duplicate the row.
 function hotkeyApi.OnDisplayOptions(options, config)
-  if not (optionsMenu and (optionsMenu.currentOption == "settings")) then
+  if not (optionsMenu and (optionsMenu.currentOption == "main")) then
     return options
   end
   if type(options) ~= "table" then
@@ -549,8 +549,8 @@ function hotkeyApi.OnDisplayOptions(options, config)
       -- Already inserted on a previous render.
       return options
     end
-    if (type(row) == "table") and (row.id == "input") then
-      insertAt = i + 1
+    if (type(row) == "table") and (row.id == "credits") and (not insertAt) then
+      insertAt = i
     end
   end
 
