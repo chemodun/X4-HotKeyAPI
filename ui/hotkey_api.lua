@@ -463,6 +463,22 @@ function hotkeyApi.IsControlsPage(optionParameter)
   return ReadText(PAGE_ID, 14)
 end
 
+local function IsOurFunctionCode(controltype, controlcode)
+  return (controltype == "functions") and (controlcode >= (FUNCTION_KEY_BASE + 23)) and (controlcode <= (FUNCTION_KEY_BASE + 70))
+end
+
+-- Predicate callback for gameoptions.xpl's "remapInput_useCheckAll" hook
+-- (menu.remapInput, right before menu.checkForConflicts is called). Default
+-- vanilla behaviour only checks the current page's own controlsorder, so a
+-- key bound here would never be flagged as conflicting with e.g. a "General
+-- Controls" binding on a different page. Our pool is always-active
+-- (INPUT_CONTEXT_ADDON_DEBUGLOG), so cross-page conflicts are real and worth
+-- surfacing - hence asking for the full (checkall=true) scan whenever the
+-- control being remapped is one of ours.
+function hotkeyApi.UseCheckAllForRemap(controltype, controlcode)
+  return IsOurFunctionCode(controltype, controlcode)
+end
+
 -- Injects a navigation row into the vanilla "settings" page (Options >
 -- Settings), parallel to "Controls"/"Display"/"Gfx"/etc, pointing at our own
 -- MANAGEMENT_PAGE_ID. config.optionDefinitions["settings"] is the same
@@ -740,6 +756,15 @@ local function Init()
     -- the "Hotkey Management" nav page itself.
     optionsMenu.registerCallback("submenuHandler_customPage", hotkeyApi.DisplayRequestsManagement)
     debugLog("Init: declared '%s' as a custom-rendered page", REQUESTS_PAGE_ID)
+
+    -- Cross-page conflict checking for our always-active debug-pool keys -
+    -- conservatively unconditional (same as "any" was) regardless of each
+    -- hotkey's configured area: per-area filtering turned out unreliable
+    -- (depends on per-row context numbers that were never confirmed, and
+    -- testing showed it not behaving distinctly across areas), so better to
+    -- over-warn than silently miss a real conflict.
+    optionsMenu.registerCallback("remapInput_useCheckAll", hotkeyApi.UseCheckAllForRemap)
+    debugLog("Init: registered remapInput_useCheckAll callback")
   end
 
   SetScript("onHotkey", hotkeyApi.onHotKey)
