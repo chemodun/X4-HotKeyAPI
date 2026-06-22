@@ -52,8 +52,8 @@ ui/hotkey_api.lua and claude/mod-hotkey_api.md for the full design.
     - The same id always maps to the same physical hotkey slot once assigned.
   * area = 'any'
     - String, one of 'map' / 'space' / 'any' - where the action is allowed
-      to fire and what "selected object" means for isTargetRequired.
-  * isTargetRequired = false
+      to fire and what "selected object" means for isObjectRequired.
+  * isObjectRequired = false
     - Boolean. If true, the action is skipped (with a fail-sound) unless a
       map selection ('map') or ship target ('space') is currently present.
   * name
@@ -78,7 +78,7 @@ ui/hotkey_api.lua and claude/mod-hotkey_api.md for the full design.
           param="table[
             $id               = 'my_mod_my_action',
             $area             = 'any',
-            $isTargetRequired = false,
+            $isObjectRequired = false,
             $name             = 'My Action',
             $actionCue        = My_Action_Cue,
             ]"/>
@@ -122,7 +122,11 @@ ui/hotkey_api.lua and claude/mod-hotkey_api.md for the full design.
         <set_value name="$slot" exact="event.param3" />
         <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}" />
         <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">
-          <signal_cue_instantly cue="$record.$actionCue" param="table[$id=$record.$id]" />
+          <set_value name="$params" exact="table[$id=$record.$id]" />
+          <do_if value="@player.entity.$hotkey_api_selected != null">
+            <set_value name="$params.$object" exact="player.entity.$hotkey_api_selected" />
+          </do_if>
+          <signal_cue_instantly cue="$record.$actionCue" param="$params" />
         </do_if>
       </actions>
     </cue>
