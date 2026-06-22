@@ -125,6 +125,35 @@ local function FindFreeSlot()
 	return nil
 end
 
+-- Clears any key currently bound to this slot's numeric action id (e.g. a
+-- leftover from previous testing/an earlier mod that used this same pool
+-- slot), so a freshly claimed slot starts genuinely unbound and the player
+-- has to consciously assign a key via the General Controls page. Must only
+-- be called once, at first claim - never on a re-registration of an already
+-- known id, or it would wipe the player's own chosen key on every reload.
+local function ClearSlotBinding(slot)
+	local numericId = POOL_NUMERIC_IDS[slot]
+	if not numericId then
+		return
+	end
+	local ok, actions = pcall(GetInputActionMap)
+	if not ok or (type(actions) ~= "table") then
+		debugLog("ClearSlotBinding: GetInputActionMap() failed for slot %s", slot)
+		return
+	end
+	if actions[numericId] == nil then
+		debugLog("ClearSlotBinding: slot %s (numeric id %d) already unbound", slot, numericId)
+		return
+	end
+	actions[numericId] = nil
+	local saveOk, saveErr = pcall(SaveInputSettings, actions, GetInputStateMap(), GetInputRangeMap())
+	if saveOk then
+		debugLog("ClearSlotBinding: cleared pre-existing key binding for slot %s (numeric id %d)", slot, numericId)
+	else
+		debugLog("ClearSlotBinding: SaveInputSettings failed for slot %s: %s", slot, tostring(saveErr))
+	end
+end
+
 function hotkeyApi.OnRegisterAction(_, _)
 	local request = GetNextRequest()
 	debugLog("OnRegisterAction received, id: %s", (request and request.id) or "nil")
@@ -141,6 +170,7 @@ function hotkeyApi.OnRegisterAction(_, _)
 			return
 		end
 		debugLog("OnRegisterAction: claimed new slot %s for id '%s'", slot, request.id)
+		ClearSlotBinding(slot)
 	else
 		debugLog("OnRegisterAction: reusing existing slot %s for id '%s'", slot, request.id)
 	end
