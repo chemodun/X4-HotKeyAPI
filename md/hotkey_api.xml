@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<mdscript name="HotkeyApi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<!--@doc-title Hotkey API (POC) -->
+<!--
+MD-facing contract for the Hotkey API proof-of-concept. Mirrors
+sn_mod_support_apis' Interact_Menu_API/Hotkey_API pattern: consumers listen
+for Reloaded, then call Register_Action with their own cue as the callback.
+
+The registry itself lives in Lua (persisted to a player blackboard var) -
+this script is a thin bridge, not a registry of its own. See
+ui/hotkey_api.lua and claude/mod-hotkey_api.md for the full design.
+-->
+<cues>
+
+  <!--@doc-cue
+  Dummy cue used for signalling that the api (re)loaded.
+  Consumers should listen for this cue being signalled, and (re-)send
+  Register_Action in response every time - registrations must be re-sent on
+  every reload, since cue references do not survive across one.
+  -->
+  <cue name="Reloaded" instantiate="true">
+    <conditions>
+      <event_cue_signalled />
+    </conditions>
+    <actions>
+    </actions>
+  </cue>
+
+  <!--
+  Capture the lua-side notification that lua (re)loaded, and redistribute it
+  as a normal MD cue signal other extensions can listen to.
+  -->
+  <cue name="Reset_On_Lua_Reload" instantiate="true">
+    <conditions>
+      <event_ui_triggered screen="'HotkeyApi'" control="'reloaded'" />
+    </conditions>
+    <actions>
+      <signal_cue_instantly cue="Reloaded"/>
+    </actions>
+  </cue>
+
+  <!--@doc-cue
+  Register (or refresh) a hotkey action. Must be re-sent every time Reloaded
+  is signalled.
+
+  Param: table with the following items:
+  * id
+    - String, unique identifier of this action, chosen by the calling mod.
+    - The same id always maps to the same physical hotkey slot once assigned.
+  * area = 'any'
+    - String, one of 'map' / 'space' / 'any' - where the action is allowed
+      to fire and what "selected object" means for isTargetRequired.
+  * isTargetRequired = false
+    - Boolean. If true, the action is skipped (with a fail-sound) unless a
+      map selection ('map') or ship target ('space') is currently present.
+  * name
+    - String, display name shown for this action's row in the General
+      Controls keybinding list.
+  * actionCue
+    - Cue reference, signalled when the hotkey fires and any target
+      requirement is satisfied. Receives param=table[$id=id].
+  * actionLua
+    - Reserved for future use (a lua-side callback identifier). Stored, but
+      not invoked yet.
+
+  Usage example:
+    ```xml
+    <cue name="Register_My_Action" instantiate="true">
+      <conditions>
+        <event_cue_signalled cue="md.HotkeyApi.Reloaded" />
+      </conditions>
+      <actions>
+        <signal_cue_instantly
+          cue="md.HotkeyApi.Register_Action"
+          param="table[
+            $id               = 'my_mod_my_action',
+            $area             = 'any',
+            $isTargetRequired = false,
+            $name             = 'My Action',
+            $actionCue        = My_Action_Cue,
+            ]"/>
+      </actions>
+    </cue>
+    ```
+  -->
+  <cue name="Register_Action" instantiate="true" namespace="this">
+    <conditions>
+      <event_cue_signalled/>
+    </conditions>
+    <actions>
+      <!-- Pure passthrough - the registry lives in lua, persisted to a
+           player blackboard var. We only forward the request as-is. -->
+      <raise_lua_event name="'HotkeyApi.Register_Action'" param="event.param"/>
+    </actions>
+  </cue>
+
+  <!--
+  Lua signals that a bound hotkey fired and any target requirement was
+  already checked/satisfied. event.param3 is the pool slot id (an
+  INPUT_ACTION_DEBUG_* string), used as the key into the same blackboard var
+  lua maintains, to look up and invoke the registered actionCue.
+  -->
+  <cue name="Execute_Action" instantiate="true" namespace="this">
+    <conditions>
+      <event_ui_triggered screen="'HotkeyApi'" control="'execute_action'" />
+    </conditions>
+    <actions>
+      <set_value name="$slot" exact="event.param3"/>
+      <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}"/>
+      <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">
+        <signal_cue_instantly cue="$record.$actionCue" param="table[$id=$record.$id]"/>
+      </do_if>
+    </actions>
+  </cue>
+
+</cues>
+</mdscript>

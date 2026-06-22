@@ -1,263 +1,224 @@
 -- Hotkey API (POC)
--- Defines INPUT_ACTION_HOTKEY_API_TEST (map-only, no default key), lets the
--- player bind a key to it via a new Settings page entry, and reacts to the
--- action through the new "hotkey_action_selected" UIX callback added to the
--- Map menu's menu.hotkey() dispatch.
+-- MD forwards consumer registration requests (id/area/isTargetRequired/name/
+-- actionCue/actionLua) via raise_lua_event; this file owns the single
+-- bound-hotkeys registry (persisted to a player blackboard var so slot
+-- assignments survive Lua's own reload, since Lua state itself does not),
+-- dispatches via a direct SetScript("onHotkey", ...) registration (the pool
+-- lives in the always-active INPUT_CONTEXT_ADDON_DEBUGLOG context), and
+-- feeds the General Controls page via OnDisplayControlsOrder.
+
+local ffi = require("ffi")
+local C = ffi.C
+ffi.cdef[[
+	typedef uint64_t UniverseID;
+	UniverseID GetPlayerID(void);
+]]
 
 local PAGE_ID = 1972092431
-local ACTION_ID = "INPUT_ACTION_DEBUG_F12"
--- Numeric id for ACTION_ID, discovered empirically in-game 2026-06-21 via
--- DumpActionsBoundToKeycode() (capture F12 through the bind button) - it is
--- NOT derivable from any string id, schema, or declaration order (verified
--- against config.input.controlFunctions: sibling actions added together show
--- inconsistent offsets, e.g. +35 then +1 - no reliable pattern to exploit).
--- This is the key that actually indexes GetInputActionMap()/SaveInputSettings;
--- ACTION_ID (the string) is only ever used for the onHotkey/menu.hotkey side.
-local ACTION_NUMERIC_ID = 70
+
+-- Working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12 (48 actions), in the exact
+-- order matching their confirmed-contiguous numeric ids 23-70 (discovery
+-- method/evidence in claude/mod-hotkey_api.md). INSERT/DELETE/NUMPAD0-9/
+-- SPACE/PAGEUP/PAGEDOWN are deliberately excluded (mixed/unresolved id
+-- confidence).
+local POOL = {
+	"INPUT_ACTION_DEBUG_0", "INPUT_ACTION_DEBUG_1", "INPUT_ACTION_DEBUG_2", "INPUT_ACTION_DEBUG_3",
+	"INPUT_ACTION_DEBUG_4", "INPUT_ACTION_DEBUG_5", "INPUT_ACTION_DEBUG_6", "INPUT_ACTION_DEBUG_7",
+	"INPUT_ACTION_DEBUG_8", "INPUT_ACTION_DEBUG_9",
+	"INPUT_ACTION_DEBUG_A", "INPUT_ACTION_DEBUG_B", "INPUT_ACTION_DEBUG_C", "INPUT_ACTION_DEBUG_D",
+	"INPUT_ACTION_DEBUG_E", "INPUT_ACTION_DEBUG_F", "INPUT_ACTION_DEBUG_G", "INPUT_ACTION_DEBUG_H",
+	"INPUT_ACTION_DEBUG_I", "INPUT_ACTION_DEBUG_J", "INPUT_ACTION_DEBUG_K", "INPUT_ACTION_DEBUG_L",
+	"INPUT_ACTION_DEBUG_M", "INPUT_ACTION_DEBUG_N", "INPUT_ACTION_DEBUG_O", "INPUT_ACTION_DEBUG_P",
+	"INPUT_ACTION_DEBUG_Q", "INPUT_ACTION_DEBUG_R", "INPUT_ACTION_DEBUG_S", "INPUT_ACTION_DEBUG_T",
+	"INPUT_ACTION_DEBUG_U", "INPUT_ACTION_DEBUG_V", "INPUT_ACTION_DEBUG_W", "INPUT_ACTION_DEBUG_X",
+	"INPUT_ACTION_DEBUG_Y", "INPUT_ACTION_DEBUG_Z",
+	"INPUT_ACTION_DEBUG_F1", "INPUT_ACTION_DEBUG_F2", "INPUT_ACTION_DEBUG_F3", "INPUT_ACTION_DEBUG_F4",
+	"INPUT_ACTION_DEBUG_F5", "INPUT_ACTION_DEBUG_F6", "INPUT_ACTION_DEBUG_F7", "INPUT_ACTION_DEBUG_F8",
+	"INPUT_ACTION_DEBUG_F9", "INPUT_ACTION_DEBUG_F10", "INPUT_ACTION_DEBUG_F11", "INPUT_ACTION_DEBUG_F12",
+}
+
+-- Numeric id = 23 + (position in POOL - 1); confirmed contiguous in-game.
+local POOL_NUMERIC_IDS = {}
+for i, actionId in ipairs(POOL) do
+	POOL_NUMERIC_IDS[actionId] = 22 + i
+end
+
+local BLACKBOARD_BOUND = "$hotkey_api_bound"
+local BLACKBOARD_SELECTED = "$hotkey_api_selected"
 
 local hotkeyApi = {}
 
--- ##########################################################################
--- Map menu: react to the action (mirrors INPUT_ACTION_ADDON_DETAILMONITOR_I)
--- ##########################################################################
-
 local mapMenu = nil
-
-function hotkeyApi.OnHotkeySelected(action, selectedcomponent, _rowdata)
-  if action ~= ACTION_ID then
-    return
-  end
-  if (not mapMenu.mode) and IsInfoUnlockedForPlayer(selectedcomponent, "name") and CanViewLiveData(selectedcomponent) then
-    mapMenu.openDetails(selectedcomponent)
-  else
-    PlaySound("ui_target_set_fail")
-  end
-end
-
--- ##########################################################################
--- Options menu: let the player bind a key to the action
--- ##########################################################################
-
 local optionsMenu = nil
-local capturing = false
+local playerId = nil
 
-local function GetBoundKeyText()
-  local ok, actions = pcall(GetInputActionMap)
-  if not ok or type(actions) ~= "table" or type(actions[ACTION_NUMERIC_ID]) ~= "table" then
-    return ReadText(PAGE_ID, 13)
-  end
-  local inputs = actions[ACTION_NUMERIC_ID]
-  if not inputs[1] then
-    return ReadText(PAGE_ID, 13)
-  end
-  return "source=" .. tostring(inputs[1][1]) .. " code=" .. tostring(inputs[1][2])
+-- boundHotkeys: keyed by slot (a POOL action-id string) ->
+-- {id, area, isTargetRequired, name, actionCue, actionLua}. This is the one
+-- registry - mirrored verbatim to the player blackboard var so it survives
+-- Lua's own reload (slot assignments are sticky; area/name/actionCue/
+-- actionLua get refreshed by re-registration after every Reloaded).
+local boundHotkeys = {}
+
+local function SaveBoundHotkeys()
+	SetNPCBlackboard(playerId, BLACKBOARD_BOUND, boundHotkeys)
 end
 
-local function ButtonLabel()
-  if capturing then
-    return ReadText(PAGE_ID, 12)
-  end
-  return ReadText(PAGE_ID, 11) .. ": " .. GetBoundKeyText()
+local function LoadBoundHotkeys()
+	local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BOUND)
+	if ok and (type(stored) == "table") then
+		boundHotkeys = stored
+	end
 end
 
--- config is only reachable as the 2nd arg of OnDisplayOptions (it's a local
--- in gameoptions.xpl, not a global) - cache it the first time we see it.
-local cachedConfig = nil
-
--- Returns true if numeric action id `id` already appears in any of the 3
--- vanilla keyboard pages (config.input.controlsorder.space/menus/firstperson) -
--- either directly as a {"actions", id} row, or indirectly nested inside a
--- {"functions", N} row's config.input.controlFunctions[N].actions list (e.g.
--- INPUT_ACTION_ADDON_DETAILMONITOR_I is one of controlFunctions[5].actions =
--- {128, 163}, never a direct controlsorder row of its own).
-local function IsKnownVanillaActionId(id)
-  if not cachedConfig then
-    return false
-  end
-  for _, pageKey in ipairs({ "space", "menus", "firstperson" }) do
-    local page = cachedConfig.input.controlsorder[pageKey]
-    if type(page) == "table" then
-      for _, controlsgroup in ipairs(page) do
-        for _, control in ipairs(controlsgroup) do
-          if (control[1] == "actions") and (control[2] == id) then
-            return true
-          elseif (control[1] == "functions") then
-            local fn = cachedConfig.input.controlFunctions[control[2]]
-            if type(fn) == "table" and type(fn.actions) == "table" then
-              for _, nestedId in ipairs(fn.actions) do
-                if nestedId == id then
-                  return true
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-  return false
+local function FindSlotById(id)
+	for slot, record in pairs(boundHotkeys) do
+		if record.id == id then
+			return slot
+		end
+	end
+	return nil
 end
 
--- Discovery helper: GetInputActionMap() is keyed by an internal NUMERIC id,
--- not the string action id (confirmed: menu.getControlName/menu.displayControlRow
--- index it with the same small integers used in config.input.controlsorder).
--- There is no known string->numeric lookup, so to find ACTION_ID's numeric id
--- we scan every entry for one whose bound key matches a keycode we just
--- captured via the same physical key, then filter out any candidate that is
--- already a known vanilla action (defensive - DEBUG_F12's default key, F12,
--- is not shared with any other vanilla action, unlike "1"/weapon-group-1).
-local function DumpActionsBoundToKeycode(keycode)
-  local ok, actions = pcall(GetInputActionMap)
-  if not ok or type(actions) ~= "table" then
-    DebugError("hotkey_api: GetInputActionMap() failed or returned non-table")
-    return
-  end
-  for id, entry in pairs(actions) do
-    if type(entry) == "table" then
-      for _, tuple in ipairs(entry) do
-        if type(tuple) == "table" and (tuple[2] == keycode) then
-          local known = IsKnownVanillaActionId(id)
-          DebugError("hotkey_api: numeric action id " .. tostring(id) .. " is bound to keycode " .. tostring(keycode)
-            .. " tuple=(" .. tostring(tuple[1]) .. "," .. tostring(tuple[2]) .. "," .. tostring(tuple[3]) .. ")"
-            .. (known and " [known vanilla action - NOT debug_1]" or " [NOT in controlsorder - likely DEBUG_1]"))
-        end
-      end
-    end
-  end
+local function FindFreeSlot()
+	for _, slot in ipairs(POOL) do
+		if not boundHotkeys[slot] then
+			return slot
+		end
+	end
+	return nil
 end
 
-local function OnKeyCaptured(_, keycode)
-  UnregisterEvent("keyboardInput", OnKeyCaptured)
-  ListenForInput(false)
-  capturing = false
+function hotkeyApi.OnRegisterAction(_, request)
+	if (type(request) ~= "table") or (type(request.id) ~= "string") then
+		DebugError("hotkey_api: Register_Action received an invalid request")
+		return
+	end
 
-  DebugError("hotkey_api: captured keycode " .. tostring(keycode) .. " for " .. ACTION_ID)
-  DumpActionsBoundToKeycode(keycode)
+	local slot = FindSlotById(request.id)
+	if not slot then
+		slot = FindFreeSlot()
+		if not slot then
+			DebugError("hotkey_api: no free slot left for id '" .. request.id .. "' - pool exhausted")
+			return
+		end
+	end
 
-  local ok, actions = pcall(GetInputActionMap)
-  if ok and type(actions) == "table" then
-    -- source 1 = keyboard, sign 0 = plain press; tuple shape mirrors
-    -- {type, code, sign, toggle} seen in gameoptions.xpl's menu.controls.
-    -- Must be keyed by the NUMERIC id - GetInputActionMap()/SaveInputSettings
-    -- do not recognise the string action id at all.
-    actions[ACTION_NUMERIC_ID] = { { 1, keycode, 0, false } }
-    local saveOk, saveErr = pcall(SaveInputSettings, actions, GetInputStateMap(), GetInputRangeMap())
-    if not saveOk then
-      DebugError("hotkey_api: SaveInputSettings failed: " .. tostring(saveErr))
-    end
-  end
+	boundHotkeys[slot] = {
+		id = request.id,
+		area = request.area or "any",
+		isTargetRequired = request.isTargetRequired or false,
+		name = request.name or request.id,
+		actionCue = request.actionCue,
+		actionLua = request.actionLua,
+	}
+	SaveBoundHotkeys()
 
-  if optionsMenu and (optionsMenu.currentOption == "hotkey_api_test") then
-    optionsMenu.refresh()
-  end
+	if optionsMenu and (optionsMenu.currentOption == "keyboard_space") then
+		optionsMenu.refresh()
+	end
 end
 
-function hotkeyApi.StartCapture()
-  if capturing then
-    return
-  end
-  capturing = true
-  RegisterEvent("keyboardInput", OnKeyCaptured)
-  ListenForInput(true)
+-- Returns the selected/targeted object component id for the given area, or
+-- nil. Only "map"/"space" carry a notion of "selection" at all.
+local function GetSelectedObjectForArea(area)
+	if area == "map" then
+		if not (mapMenu and next(mapMenu.selectedcomponents or {})) then
+			return nil
+		end
+		for id, _ in pairs(mapMenu.selectedcomponents) do
+			local component = ConvertStringTo64Bit(id)
+			if IsValidComponent(component) then
+				return component
+			end
+		end
+		return nil
+	elseif area == "space" then
+		local target = GetPlayerTarget()
+		if target and (target ~= 0) then
+			return target
+		end
+		return nil
+	end
+	return nil
 end
 
-function hotkeyApi.OnDisplayOptions(options, config)
-  DebugError("hotkey_api: OnDisplayOptions called with options = " .. tostring(options) .. ", config = " .. tostring(config))
-  cachedConfig = config
-  config.optionDefinitions["hotkey_api_test"] = config.optionDefinitions["hotkey_api_test"] or {
-    name = function() return ReadText(PAGE_ID, 10) end,
-    [1] = {
-      id = "hotkey_api_bind",
-      name = ButtonLabel,
-      callback = hotkeyApi.StartCapture,
-    },
-  }
+function hotkeyApi.onHotKey(action)
+	local record = boundHotkeys[action]
+	if not record then
+		return
+	end
 
-  if (type(options) == "table") and optionsMenu and (optionsMenu.currentOption == "settings") then
-    DebugError("hotkey_api: Modifying options menu for settings")
-    local exists = false
-    for _, row in ipairs(options) do
-      if (type(row) == "table") and (row.id == "hotkey_api_test_entry") then
-        exists = true
-        break
-      end
-    end
-    if not exists then
-      DebugError("hotkey_api: Inserting hotkey_api_test_entry into options menu")
-      table.insert(options, {
-        id = "hotkey_api_test_entry",
-        name = function() return ReadText(PAGE_ID, 10) end,
-        submenu = "hotkey_api_test",
-      })
-    end
-  end
+	local selected = GetSelectedObjectForArea(record.area)
 
-  return options
+	if record.isTargetRequired and not selected then
+		PlaySound("ui_target_set_fail")
+		return
+	end
+
+	SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, selected)
+	AddUITriggeredEvent("HotkeyApi", "execute_action", action)
 end
 
--- ADDON_DETAILMONITOR_I/etc. live in controlsorder.space ("Menu Access" group),
--- so our row goes there too, as our own new group (not editing Ego's group).
--- Once inserted, the existing remap/add/remove/reset button machinery in
+-- ADDON_DETAILMONITOR_I/etc. live in controlsorder.space ("Menu Access"
+-- group), so our rows go there too, as our own group. Once inserted, the
+-- existing remap/add/remove/reset button machinery in
 -- menu.displayControlRow/menu.buttonControl/menu.remapInputInternal handles
 -- everything generically by controltype+code - no further hook needed there.
-function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config)
-  cachedConfig = config
-  if optionParameter ~= "keyboard_space" then
-    return controlsorder
-  end
-  for _, group in ipairs(controlsorder) do
-    if group.id == "hotkey_api_group" then
-      return controlsorder
-    end
-  end
-  table.insert(controlsorder, {
-    id = "hotkey_api_group",
-    title = ReadText(PAGE_ID, 10),
-    mappable = true,
-    { "actions", ACTION_NUMERIC_ID },
-  })
-  return controlsorder
-end
+function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, _config)
+	if optionParameter ~= "keyboard_space" then
+		return controlsorder
+	end
 
-local function hotkey(action)
-  local currentMenu = nil
-  for _, menu in ipairs(Menus) do
-    if menu.shown then
-      currentMenu = menu
-      break
-    end
-  end
-  DebugError("hotkey_api: hotkey() = " .. tostring(action) .. ", currentMenu = " .. tostring(currentMenu and currentMenu.name or ""))
-end
+	-- controlsorder is the same persistent config.input.controlsorder.space
+	-- table every time this page renders (not a fresh copy) - remove any
+	-- stale group from a previous render before inserting a current one, so
+	-- repeated page views neither duplicate nor go stale.
+	for i = #controlsorder, 1, -1 do
+		if controlsorder[i].id == "hotkey_api_group" then
+			table.remove(controlsorder, i)
+		end
+	end
 
-local function onUpdate()
-  -- DebugError("hotkey_api: onUpdate()")
-  -- RegisterAddonBindings("ego_detailmonitor", "map")
+	local groupRow = {
+		id = "hotkey_api_group",
+		title = ReadText(PAGE_ID, 10),
+		mappable = true,
+	}
+	local rowCount = 0
+	for _, slot in ipairs(POOL) do
+		local record = boundHotkeys[slot]
+		local numericId = POOL_NUMERIC_IDS[slot]
+		if record and numericId then
+			rowCount = rowCount + 1
+			groupRow[rowCount] = { "actions", numericId, nil, record.name }
+		end
+	end
+
+	if rowCount > 0 then
+		table.insert(controlsorder, groupRow)
+	end
+
+	return controlsorder
 end
--- ##########################################################################
--- Init
--- ##########################################################################
 
 local function Init()
-  mapMenu = Helper.getMenu("MapMenu")
-  if (mapMenu == nil) or (type(mapMenu.registerCallback) ~= "function") then
-    DebugError("hotkey_api: MapMenu not found - kuertee UI Extensions missing?")
-    return
-  end
-  mapMenu.registerCallback("hotkey_action_selected", hotkeyApi.OnHotkeySelected)
-  DebugError("hotkey_api: MapMenu callback registered")
-  optionsMenu = Helper.getMenu("OptionsMenu")
-  if (optionsMenu == nil) or (type(optionsMenu.registerCallback) ~= "function") then
-    DebugError("hotkey_api: OptionsMenu not found - kuertee UI Extensions missing?")
-    return
-  end
-  optionsMenu.registerCallback("displayOptions_modifyOptions", hotkeyApi.OnDisplayOptions)
-  optionsMenu.registerCallback("displayControls_modifyControlsOrder", hotkeyApi.OnDisplayControlsOrder)
-  DebugError("hotkey_api: OptionsMenu callback registered")
-  SetScript("onHotkey", hotkey)
-  -- RegisterAddonBindings("ego_detailmonitor", "extra")
+	playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
+
+	LoadBoundHotkeys()
+
+	mapMenu = Helper.getMenu("MapMenu")
+	optionsMenu = Helper.getMenu("OptionsMenu")
+	if optionsMenu and (type(optionsMenu.registerCallback) == "function") then
+		optionsMenu.registerCallback("displayControls_modifyControlsOrder", hotkeyApi.OnDisplayControlsOrder)
+	end
+
+	SetScript("onHotkey", hotkeyApi.onHotKey)
+
+	RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
+
+	-- Notify MD that lua (re)loaded - consumers listen for md.HotkeyApi.Reloaded
+	-- and (re-)send their registration in response.
+	AddUITriggeredEvent("HotkeyApi", "reloaded")
 end
 
 Register_OnLoad_Init(Init)
-
--- Init()
