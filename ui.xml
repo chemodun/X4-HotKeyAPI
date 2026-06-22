@@ -4,6 +4,7 @@
     <environment type="menus">
         <dependency name="sn_mod_support_apis" />
         <dependency name="ego_detailmonitor" />
+        <dependency name="ego_debuglog" />
         <dependency name="kuertee_ui_extensions" />
         <file name="ui/hotkey_api.lua" />
     </environment>

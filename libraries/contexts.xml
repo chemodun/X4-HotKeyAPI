@@ -1,8 +1,155 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <diff>
+    <!-- Free pool: every reusable INPUT_ACTION_DEBUG_* id (excludes
+         INPUT_ACTION_TOGGLE_DEBUG_INPUT and INPUT_ACTION_DEBUG_FEATURE_1-4,
+         which keep real debug functionality wired up). Removed from their
+         original debug contexts and reassigned to INPUT_CONTEXT_ADDON_DEBUGLOG
+         (always-active, see ui/addons/ego_debuglog/ui.xml) so the whole pool
+         is live everywhere, not menu/mode specific. -->
+
+    <!-- INPUT_CONTEXT_DEBUG_BASE: INSERT only lives here -->
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_INSERT']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F1']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F2']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F3']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F4']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F5']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F6']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F7']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F8']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F9']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F10']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F11']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG_BASE']/action[@id='INPUT_ACTION_DEBUG_F12']" />
+
+    <!-- INPUT_CONTEXT_DEBUG: everything else (and F1-F12 again, also listed here) -->
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_1']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_2']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_3']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_4']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_5']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_6']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_7']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_8']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_9']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_0']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_A']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_B']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_C']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_D']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_E']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_G']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_H']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_I']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_J']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_K']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_L']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_M']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_N']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_O']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_P']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_Q']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_R']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_S']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_T']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_U']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_V']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_W']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_X']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_Y']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_Z']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F1']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F2']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F3']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F4']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F5']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F6']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F7']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F8']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F9']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F10']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F11']" />
     <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_F12']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_PAGEDOWN']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_PAGEUP']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_SPACE']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD0']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD1']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD2']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD3']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD4']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD5']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD6']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD7']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD8']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_NUMPAD9']" />
+    <remove sel="//context[@id='INPUT_CONTEXT_DEBUG']/action[@id='INPUT_ACTION_DEBUG_DELETE']" />
+
+    <!-- Reassign the whole pool (63 actions) to the always-active debuglog context -->
     <add sel="//context[@id='INPUT_CONTEXT_ADDON_DEBUGLOG']">
+        <action id="INPUT_ACTION_DEBUG_INSERT" />
+        <action id="INPUT_ACTION_DEBUG_1" />
+        <action id="INPUT_ACTION_DEBUG_2" />
+        <action id="INPUT_ACTION_DEBUG_3" />
+        <action id="INPUT_ACTION_DEBUG_4" />
+        <action id="INPUT_ACTION_DEBUG_5" />
+        <action id="INPUT_ACTION_DEBUG_6" />
+        <action id="INPUT_ACTION_DEBUG_7" />
+        <action id="INPUT_ACTION_DEBUG_8" />
+        <action id="INPUT_ACTION_DEBUG_9" />
+        <action id="INPUT_ACTION_DEBUG_0" />
+        <action id="INPUT_ACTION_DEBUG_A" />
+        <action id="INPUT_ACTION_DEBUG_B" />
+        <action id="INPUT_ACTION_DEBUG_C" />
+        <action id="INPUT_ACTION_DEBUG_D" />
+        <action id="INPUT_ACTION_DEBUG_E" />
+        <action id="INPUT_ACTION_DEBUG_F" />
+        <action id="INPUT_ACTION_DEBUG_G" />
+        <action id="INPUT_ACTION_DEBUG_H" />
+        <action id="INPUT_ACTION_DEBUG_I" />
+        <action id="INPUT_ACTION_DEBUG_J" />
+        <action id="INPUT_ACTION_DEBUG_K" />
+        <action id="INPUT_ACTION_DEBUG_L" />
+        <action id="INPUT_ACTION_DEBUG_M" />
+        <action id="INPUT_ACTION_DEBUG_N" />
+        <action id="INPUT_ACTION_DEBUG_O" />
+        <action id="INPUT_ACTION_DEBUG_P" />
+        <action id="INPUT_ACTION_DEBUG_Q" />
+        <action id="INPUT_ACTION_DEBUG_R" />
+        <action id="INPUT_ACTION_DEBUG_S" />
+        <action id="INPUT_ACTION_DEBUG_T" />
+        <action id="INPUT_ACTION_DEBUG_U" />
+        <action id="INPUT_ACTION_DEBUG_V" />
+        <action id="INPUT_ACTION_DEBUG_W" />
+        <action id="INPUT_ACTION_DEBUG_X" />
+        <action id="INPUT_ACTION_DEBUG_Y" />
+        <action id="INPUT_ACTION_DEBUG_Z" />
+        <action id="INPUT_ACTION_DEBUG_F1" />
+        <action id="INPUT_ACTION_DEBUG_F2" />
+        <action id="INPUT_ACTION_DEBUG_F3" />
+        <action id="INPUT_ACTION_DEBUG_F4" />
+        <action id="INPUT_ACTION_DEBUG_F5" />
+        <action id="INPUT_ACTION_DEBUG_F6" />
+        <action id="INPUT_ACTION_DEBUG_F7" />
+        <action id="INPUT_ACTION_DEBUG_F8" />
+        <action id="INPUT_ACTION_DEBUG_F9" />
+        <action id="INPUT_ACTION_DEBUG_F10" />
+        <action id="INPUT_ACTION_DEBUG_F11" />
         <action id="INPUT_ACTION_DEBUG_F12" />
+        <action id="INPUT_ACTION_DEBUG_PAGEDOWN" />
+        <action id="INPUT_ACTION_DEBUG_PAGEUP" />
+        <action id="INPUT_ACTION_DEBUG_SPACE" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD0" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD1" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD2" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD3" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD4" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD5" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD6" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD7" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD8" />
+        <action id="INPUT_ACTION_DEBUG_NUMPAD9" />
+        <action id="INPUT_ACTION_DEBUG_DELETE" />
     </add>
 </diff>
