@@ -20,8 +20,18 @@ ffi.cdef [[
 
 local PAGE_ID = 1972092431
 local CONTROLS_PAGE_ID = "hotkey_api_controls"
+local MANAGEMENT_PAGE_ID = "hotkey_api_management"
+local REQUESTS_PAGE_ID = "hotkey_api_requests"
+
+-- Must be declared before debugLog() below so debugLog can see it as an
+-- upvalue - default true (matches the always-on behaviour this mod has had
+-- so far) until LoadDebugEnabled() restores the player's actual choice.
+local debugEnabled = true
 
 local function debugLog(fmt, ...)
+  if not debugEnabled then
+    return
+  end
   if select("#", ...) > 0 then
     DebugError("Hotkey API: " .. string.format(fmt, ...))
   else
@@ -59,6 +69,11 @@ end
 local BLACKBOARD_BOUND = "$hotkey_api_bound"
 local BLACKBOARD_SELECTED = "$hotkey_api_selected"
 local BLACKBOARD_REQUESTS = "$hotkey_api_requests"
+local BLACKBOARD_BLOCKED = "$hotkey_api_blocked"
+-- Same name MD's debug_text calls check directly (player.entity.$hotkey_api_debug_enabled)
+-- to gate their own output, so toggling this from the Requests page silences
+-- both Lua's debugLog() and MD's debug_text in lockstep.
+local BLACKBOARD_DEBUG_ENABLED = "$hotkey_api_debug_enabled"
 
 local hotkeyApi = {}
 
@@ -72,6 +87,25 @@ local playerId = nil
 -- Lua's own reload (slot assignments are sticky; area/name/actionCue/
 -- actionLua get refreshed by re-registration after every Reloaded).
 local boundHotkeys = {}
+
+-- blockedIds: keyed by request id -> true. Persisted (the player's decision
+-- to block an id must survive reload/restart) - ids in here are skipped by
+-- OnRegisterAction's slot-claiming, freeing/keeping their slot free for
+-- other ids. Managed entirely from the "Hotkey Requests" management page.
+local blockedIds = {}
+
+-- allRequests: keyed by request id -> display name, for every id seen via
+-- Register_Action this session, whether or not it currently holds a slot
+-- (unlike boundHotkeys, which only knows about ids that got one). Session-
+-- only by design - cleared and rebuilt from scratch every time the Reloaded
+-- broadcast goes out, so a consumer that stops registering disappears from
+-- the management page after the next refresh instead of lingering forever.
+local allRequests = {}
+
+-- Current page (1-based) of the requests-management table; reset whenever
+-- the page is (re)opened so a stale page index from a previous, longer list
+-- doesn't leave the view stuck past the end of a shorter one.
+local requestsPage = 1
 
 -- Local queue of pending registration requests, drained from
 -- BLACKBOARD_REQUESTS - mirrors sn_mod_support_apis' Interact_Menu_API
@@ -90,6 +124,29 @@ local function LoadBoundHotkeys()
   if ok and (type(stored) == "table") then
     boundHotkeys = stored
     debugLog("LoadBoundHotkeys: restored %d bound slot(s) from blackboard", select("#", next(stored) and 1 or 0))
+  end
+end
+
+local function SaveBlockedIds()
+  SetNPCBlackboard(playerId, BLACKBOARD_BLOCKED, blockedIds)
+end
+
+local function LoadBlockedIds()
+  local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BLOCKED)
+  if ok and (type(stored) == "table") then
+    blockedIds = stored
+    debugLog("LoadBlockedIds: restored blocked id list from blackboard")
+  end
+end
+
+local function SaveDebugEnabled()
+  SetNPCBlackboard(playerId, BLACKBOARD_DEBUG_ENABLED, debugEnabled)
+end
+
+local function LoadDebugEnabled()
+  local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_DEBUG_ENABLED)
+  if ok and (type(stored) == "boolean") then
+    debugEnabled = stored
   end
 end
 
@@ -124,6 +181,36 @@ local function FindFreeSlot()
     end
   end
   return nil
+end
+
+local function HasFreeSlot()
+  return FindFreeSlot() ~= nil
+end
+
+-- "bound" (currently holds a slot) / "blocked" (deliberately disabled by the
+-- player on the requests page) / "waiting" (enabled, but the pool was full
+-- the last time it tried to claim a slot).
+local function GetRequestStatus(id)
+  if blockedIds[id] then
+    return "blocked"
+  elseif FindSlotById(id) then
+    return "bound"
+  else
+    return "waiting"
+  end
+end
+
+-- All ids seen this session, alphabetically by display name - the order the
+-- requests-management page lists them in.
+local function GetSortedRequestIds()
+  local ids = {}
+  for id in pairs(allRequests) do
+    table.insert(ids, id)
+  end
+  table.sort(ids, function(a, b)
+    return (allRequests[a] or a) < (allRequests[b] or b)
+  end)
+  return ids
 end
 
 -- Clears any key currently bound to this slot's numeric action id (e.g. a
@@ -180,6 +267,25 @@ function hotkeyApi.OnRegisterAction(_, _)
     return
   end
 
+  -- Tracked for the requests-management page regardless of slot/block
+  -- status - this is the only place that knows about every id a consumer
+  -- ever tries to register, bound or not.
+  allRequests[request.id] = request.name or request.id
+
+  if blockedIds[request.id] then
+    -- Deliberately disabled by the player. Defensively free+clear any slot
+    -- it might still hold (shouldn't normally happen - blocking already does
+    -- this - but guards against any path that skipped that step).
+    local boundSlot = FindSlotById(request.id)
+    if boundSlot then
+      boundHotkeys[boundSlot] = nil
+      SaveBoundHotkeys()
+      ClearSlotBinding(boundSlot)
+    end
+    debugLog("OnRegisterAction: id '%s' is blocked - skipping slot claim", request.id)
+    return
+  end
+
   local slot = FindSlotById(request.id)
   if not slot then
     slot = FindFreeSlot()
@@ -203,7 +309,7 @@ function hotkeyApi.OnRegisterAction(_, _)
   }
   SaveBoundHotkeys()
 
-  if optionsMenu and (optionsMenu.currentOption == CONTROLS_PAGE_ID) then
+  if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
   end
 end
@@ -311,7 +417,7 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config
 
   local groupRow = {
     id = "hotkey_api_group",
-    title = ReadText(PAGE_ID, 10),
+    title = ReadText(PAGE_ID, 14),
     mappable = true,
   }
   local rowCount = 0
@@ -344,51 +450,272 @@ end
 -- hook, registered via the normal registerCallback id-keyed mechanism (not a
 -- flat presence-table) so any number of mods can each register their own
 -- predicate independently. Called with the page/option being checked
--- (optionParameter in menu.submenuHandler, menu.currentOption in
--- menu.checkInputSource) and must return true only for our own page.
+-- (optionParameter in menu.submenuHandler/menu.checkInputSource/the title-
+-- building code in menu.displayControls) - must return false for any other
+-- page, and for our own page either true or (as here) a string, which
+-- displayControls treats as a custom title override instead of its own
+-- firstpart/secondpart construction (a non-empty string is still truthy
+-- everywhere else this same callback is just used as a yes/no check).
 function hotkeyApi.IsControlsPage(optionParameter)
-  return optionParameter == CONTROLS_PAGE_ID
+  if optionParameter ~= CONTROLS_PAGE_ID then
+    return false
+  end
+  return ReadText(PAGE_ID, 14)
 end
 
--- Injects a navigation row into the vanilla "input" page (Options > Settings
--- > Controls), right after "Menu Navigation" (id "keyboard_menus"), pointing
--- at our own CONTROLS_PAGE_ID. config.optionDefinitions["input"] is the same
+-- Injects a navigation row into the vanilla "settings" page (Options >
+-- Settings), parallel to "Controls"/"Display"/"Gfx"/etc, pointing at our own
+-- MANAGEMENT_PAGE_ID. config.optionDefinitions["settings"] is the same
 -- persistent table every render - check before inserting so repeated views
 -- don't duplicate the row.
-function hotkeyApi.OnDisplayOptions(options, _config)
-  if not (optionsMenu and (optionsMenu.currentOption == "input")) then
+function hotkeyApi.OnDisplayOptions(options, config)
+  if not (optionsMenu and (optionsMenu.currentOption == "settings")) then
     return options
   end
   if type(options) ~= "table" then
     return options
   end
 
+  -- Lazily create our own "Hotkey Management" page once - a plain nav page
+  -- (Hotkey Bindings / Hotkey Requests / debug-logging toggle), entirely
+  -- within the generic config.optionDefinitions/menu.displayOptions
+  -- mechanism, no gameoptions.xpl patch needed for this page itself. The
+  -- toggle is a "button" row (Enabled/Disabled text) rather than a real
+  -- checkbox - menu.displayOption's generic renderer has no checkbox
+  -- valuetype, only the custom-rendered pages (e.g. Hotkey Requests) can use
+  -- actual createCheckBox widgets.
+  if config and config.optionDefinitions and (not config.optionDefinitions[MANAGEMENT_PAGE_ID]) then
+    config.optionDefinitions[MANAGEMENT_PAGE_ID] = {
+      name = function() return ReadText(PAGE_ID, 10) end,
+      [1] = {
+        id = "hotkey_api_bindings_nav",
+        name = function() return ReadText(PAGE_ID, 14) end,
+        submenu = CONTROLS_PAGE_ID,
+      },
+      [2] = {
+        id = "hotkey_api_requests_nav",
+        name = function() return ReadText(PAGE_ID, 15) end,
+        submenu = REQUESTS_PAGE_ID,
+      },
+      [3] = {
+        id = "hotkey_api_debug_toggle",
+        name = function() return ReadText(PAGE_ID, 25) end,
+        value = function() return debugEnabled and ReadText(PAGE_ID, 16) or ReadText(PAGE_ID, 26) end,
+        valuetype = "confirmation",
+        callback = function() return hotkeyApi.OnToggleDebugEnabled(not debugEnabled) end,
+      },
+    }
+    debugLog("OnDisplayOptions: created config.optionDefinitions['%s']", MANAGEMENT_PAGE_ID)
+  end
+
   local insertAt = nil
   for i, row in ipairs(options) do
-    if (type(row) == "table") and (row.id == "hotkey_api_nav") then
+    if (type(row) == "table") and (row.id == "hotkey_api_management_nav") then
       -- Already inserted on a previous render.
       return options
     end
-    if (type(row) == "table") and (row.id == "keyboard_menus") then
+    if (type(row) == "table") and (row.id == "input") then
       insertAt = i + 1
     end
   end
 
   table.insert(options, insertAt or (#options + 1), {
-    id = "hotkey_api_nav",
+    id = "hotkey_api_management_nav",
     name = function() return ReadText(PAGE_ID, 10) end,
-    submenu = CONTROLS_PAGE_ID,
+    submenu = MANAGEMENT_PAGE_ID,
   })
-  debugLog("OnDisplayOptions: inserted hotkey_api_nav row at position %d", insertAt or (#options + 1))
+  debugLog("OnDisplayOptions: inserted hotkey_api_management_nav row at position %d", insertAt or (#options + 1))
 
   return options
 end
 
+-- Toggled from a checkbox row on the requests-management page. Unchecking
+-- (checked=false) blocks the id immediately: persisted, and if it currently
+-- holds a slot, that slot's record and physical key binding are both
+-- cleared right away (matching ClearSlotBinding's "first claim" clearing
+-- elsewhere). Checking only unblocks - it does not itself reclaim a slot;
+-- that only happens via Refresh re-running the normal registration cycle,
+-- so the new claim goes through FindFreeSlot like any other registration.
+function hotkeyApi.OnToggleRequestEnabled(id, checked)
+  if checked then
+    blockedIds[id] = nil
+    debugLog("OnToggleRequestEnabled: unblocked id '%s' (will attempt to claim a slot on next Refresh)", id)
+  else
+    blockedIds[id] = true
+    local slot = FindSlotById(id)
+    if slot then
+      boundHotkeys[slot] = nil
+      SaveBoundHotkeys()
+      ClearSlotBinding(slot)
+      debugLog("OnToggleRequestEnabled: blocked id '%s', freed slot %s", id, slot)
+    else
+      debugLog("OnToggleRequestEnabled: blocked id '%s' (was not currently bound)", id)
+    end
+  end
+  SaveBlockedIds()
+
+  if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
+    optionsMenu.refresh()
+  end
+end
+
+-- Toggled from its own checkbox row on the requests-management page (not
+-- tied to any single request). Gates debugLog() here and, via the same
+-- BLACKBOARD_DEBUG_ENABLED var, the debug_text calls in hotkey_api.xml/
+-- hotkey_api_test.xml - logged unconditionally so there's always a record of
+-- when logging was switched off.
+function hotkeyApi.OnToggleDebugEnabled(checked)
+  debugEnabled = checked
+  SaveDebugEnabled()
+  DebugError("Hotkey API: debug logging " .. (checked and "enabled" or "disabled"))
+
+  if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
+    optionsMenu.refresh()
+  end
+end
+
+-- Shared by Init() (Lua's own reload) and the requests page's Refresh
+-- button: clears allRequests (session-only by design, see its declaration)
+-- and re-broadcasts Reloaded so every consumer re-sends Register_Action,
+-- giving newly-unblocked ids a chance to claim a slot via the normal
+-- registration path.
+local function BroadcastReloaded()
+  allRequests = {}
+  AddUITriggeredEvent("HotkeyApi", "reloaded")
+  debugLog("BroadcastReloaded: cleared allRequests and raised HotkeyApi/reloaded")
+end
+
+-- Closes the page after refreshing - its row set is about to change, so
+-- showing it again means reopening rather than looking at stale data.
+function hotkeyApi.RequestsPageRefresh()
+  debugLog("RequestsPageRefresh: re-broadcasting Reloaded and closing the page")
+  BroadcastReloaded()
+  if optionsMenu then
+    optionsMenu.onCloseElement("back")
+  end
+end
+
+-- Whole-page custom renderer for the requests-management page, registered
+-- under gameoptions.xpl's "submenuHandler_customPage" hook (a generic,
+-- multi-consumer-safe "render yourself, signal handled" callback list - same
+-- pattern as the other hooks, but for full pages rather than option rows).
+-- Needed instead of the generic config.optionDefinitions/menu.displayOptions
+-- path because the row list isn't fixed-size: it's a paginated, scrollable
+-- checkbox table, and a table can only have fixed (non-scrolling) rows
+-- *before* non-fixed ones - the Prev/Next/Refresh buttons need to render
+-- *after* the scrollable area, which requires a second, separate table
+-- positioned below it via getVisibleHeight(), not just more option rows.
+function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
+  debugLog("DisplayRequestsManagement: called with optionParameter='%s'", tostring(optionParameter))
+  if optionParameter ~= REQUESTS_PAGE_ID then
+    return false
+  end
+
+  Helper.clearDataForRefresh(optionsMenu, config.optionsLayer)
+  optionsMenu.selectedOption = nil
+  optionsMenu.currentOption = optionParameter
+  debugLog("DisplayRequestsManagement: cleared old data, currentOption set")
+
+  local frame = optionsMenu.createOptionsFrame()
+  debugLog("DisplayRequestsManagement: frame created")
+
+  local rowHeight = Helper.scaleY(config.standardTextHeight) + Helper.borderSize
+  local footerHeight = rowHeight + Helper.borderSize
+  -- Budget for the scrollable table (header row + checkbox rows); rowsPerPage
+  -- is derived from this, not a fixed guess, so it adapts to resolution/UI
+  -- scale like every other page in this menu.
+  local contentBudget = optionsMenu.table.height - footerHeight
+  local rowsPerPage = math.max(1, math.floor((contentBudget - rowHeight) / rowHeight))
+
+  local sortedIds = GetSortedRequestIds()
+  local totalPages = math.max(1, math.ceil(#sortedIds / rowsPerPage))
+  if requestsPage > totalPages then
+    requestsPage = totalPages
+  end
+  local hasFreeSlot = HasFreeSlot()
+  debugLog("DisplayRequestsManagement: %d request(s), %d row(s)/page, page %d/%d, hasFreeSlot=%s",
+    #sortedIds, rowsPerPage, requestsPage, totalPages, tostring(hasFreeSlot))
+
+  local ftable = frame:addTable(4, { tabOrder = 1, x = optionsMenu.table.x, y = optionsMenu.table.y, width = optionsMenu.table.width, maxVisibleHeight = contentBudget })
+  ftable:setColWidth(1, optionsMenu.table.arrowColumnWidth, false)
+  ftable:setColWidth(2, 50)
+  ftable:setColWidthPercent(4, 25)
+  debugLog("DisplayRequestsManagement: ftable created")
+
+  local headerRow = ftable:addRow(true, { fixed = true })
+  headerRow[1]:setBackgroundColSpan(3)
+  headerRow[1]:createButton({ height = config.headerTextHeight }):setIcon(config.backarrow, { x = config.backarrowOffsetX })
+  headerRow[1].handlers.onClick = function() return optionsMenu.onCloseElement("back") end
+  headerRow[2]:setColSpan(3):createText(ReadText(PAGE_ID, 15), config.headerTextProperties)
+  debugLog("DisplayRequestsManagement: header row built")
+
+  -- Static column-title row, fixed (allowed to precede the scrollable
+  -- checkbox rows, same as the back-arrow/title row above it).
+  local columnHeaderRow = ftable:addRow(false, { fixed = true })
+  columnHeaderRow[1]:setColSpan(2):createText(ReadText(PAGE_ID, 16), config.subHeaderTextProperties)
+  columnHeaderRow[3]:createText(ReadText(PAGE_ID, 23), config.subHeaderTextProperties)
+  columnHeaderRow[4]:createText(ReadText(PAGE_ID, 24), config.subHeaderTextProperties)
+
+  local startIdx = (requestsPage - 1) * rowsPerPage + 1
+  local endIdx = math.min(startIdx + rowsPerPage - 1, #sortedIds)
+  for i = startIdx, endIdx do
+    local id = sortedIds[i]
+    local name = allRequests[id] or id
+    local status = GetRequestStatus(id)
+    local checked = not blockedIds[id]
+    local checkboxActive = checked or hasFreeSlot
+    local statusText = ReadText(PAGE_ID, (status == "bound") and 17 or (status == "waiting") and 18 or 19)
+
+    local row = ftable:addRow(true, { fixed = false })
+    row[1]:createCheckBox(function() return not blockedIds[id] end, { active = checkboxActive, height = config.standardTextHeight })
+    row[1].handlers.onClick = function(_, isChecked) return hotkeyApi.OnToggleRequestEnabled(id, isChecked) end
+    row[3]:createText(name, checkboxActive and config.standardTextProperties or config.disabledTextProperties)
+    row[4]:createText(statusText, checkboxActive and config.standardTextProperties or config.disabledTextProperties)
+  end
+  debugLog("DisplayRequestsManagement: built rows %d..%d", startIdx, endIdx)
+
+  local offsety = ftable.properties.y + ftable:getVisibleHeight() + Helper.borderSize
+  local footertable = frame:addTable(4, { tabOrder = 2, x = optionsMenu.table.x, y = offsety, width = optionsMenu.table.width, skipTabChange = true })
+  debugLog("DisplayRequestsManagement: footertable created at offsety=%s", tostring(offsety))
+  local footerRow = footertable:addRow(true, { fixed = true })
+  footerRow[1]:createButton({ active = requestsPage > 1 }):setText(ReadText(PAGE_ID, 20), { halign = "center" })
+  footerRow[1].handlers.onClick = function()
+    if requestsPage > 1 then
+      requestsPage = requestsPage - 1
+      optionsMenu.refresh()
+    end
+  end
+  footerRow[2]:createText(string.format("%d / %d", requestsPage, totalPages), { halign = "center" })
+  footerRow[3]:createButton({ active = requestsPage < totalPages }):setText(ReadText(PAGE_ID, 21), { halign = "center" })
+  footerRow[3].handlers.onClick = function()
+    if requestsPage < totalPages then
+      requestsPage = requestsPage + 1
+      optionsMenu.refresh()
+    end
+  end
+  footerRow[4]:createButton({}):setText(ReadText(PAGE_ID, 22), { halign = "center" })
+  footerRow[4].handlers.onClick = function() return hotkeyApi.RequestsPageRefresh() end
+
+  frame:display()
+
+  debugLog("DisplayRequestsManagement: rendered page %d/%d (%d row(s)/page, %d total request(s))", requestsPage, totalPages, rowsPerPage, #sortedIds)
+
+  return true
+end
+
 local function Init()
-  debugLog("Initializing Hotkey API.")
   playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
+  -- Loaded first so the persisted preference applies to every debugLog call
+  -- below, including this function's own. Saved right back so the
+  -- blackboard var MD's debug_text calls read is never left unset (which
+  -- MD treats as falsy) while Lua's own default is true - keeps both sides
+  -- in sync from the very first load, not just after the player toggles it.
+  LoadDebugEnabled()
+  SaveDebugEnabled()
+  debugLog("Initializing Hotkey API.")
 
   LoadBoundHotkeys()
+  LoadBlockedIds()
 
   mapMenu = Helper.getMenu("MapMenu")
   debugLog("Init: MapMenu %s", mapMenu and "found" or "NOT found")
@@ -405,6 +732,14 @@ local function Init()
     -- through to the plain option-row renderer / rejecting all input.
     optionsMenu.registerCallback("submenuHandler_isControlsPage", hotkeyApi.IsControlsPage)
     debugLog("Init: declared '%s' as a controls page", CONTROLS_PAGE_ID)
+
+    -- The requests-management page renders itself entirely (paginated
+    -- scrollable table + a separate fixed footer table), so it goes through
+    -- the whole-page "submenuHandler_customPage" hook rather than the
+    -- per-row config.optionDefinitions/menu.displayOptions mechanism used by
+    -- the "Hotkey Management" nav page itself.
+    optionsMenu.registerCallback("submenuHandler_customPage", hotkeyApi.DisplayRequestsManagement)
+    debugLog("Init: declared '%s' as a custom-rendered page", REQUESTS_PAGE_ID)
   end
 
   SetScript("onHotkey", hotkeyApi.onHotKey)
@@ -421,8 +756,7 @@ local function Init()
 
   -- Notify MD that lua (re)loaded - consumers listen for md.HotkeyApi.Reloaded
   -- and (re-)send their registration in response.
-  AddUITriggeredEvent("HotkeyApi", "reloaded")
-  debugLog("Init: raised HotkeyApi/reloaded")
+  BroadcastReloaded()
 end
 
 Register_OnLoad_Init(Init)

@@ -8,10 +8,27 @@
             <t id="2">Proof-of-concept template for a custom hotkey registration framework.</t>
 
             <!-- Settings page -->
-            <t id="10">Hotkey API Test</t>
+            <t id="10">Hotkey Management</t>
             <t id="11">Bind Test Action Key</t>
             <t id="12">Press a key to bind...</t>
             <t id="13">Not bound</t>
+
+            <!-- Hotkey Management submenu -->
+            <t id="14">Hotkey Bindings</t>
+            <t id="15">Hotkey Requests</t>
+
+            <!-- Hotkey Requests page -->
+            <t id="16">Enabled</t>
+            <t id="17">Bound</t>
+            <t id="18">Waiting (pool full)</t>
+            <t id="19">Blocked</t>
+            <t id="20">&lt; Prev</t>
+            <t id="21">Next &gt;</t>
+            <t id="22">Apply</t>
+            <t id="23">Name</t>
+            <t id="24">Status</t>
+            <t id="25">Enable Debug Logging</t>
+            <t id="26">Disabled</t>
         </page>
     </add>
 </diff>
