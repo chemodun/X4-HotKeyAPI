@@ -154,6 +154,23 @@ local function ClearSlotBinding(slot)
   end
 end
 
+-- Sweeps the entire pool (in order, checking every slot individually - a
+-- free slot can be in the middle of otherwise-bound ones, e.g. after a mod
+-- that used to register an id stops doing so) and clears the key binding of
+-- every slot NOT currently claimed in boundHotkeys. Run once at startup,
+-- before notifying md, so unclaimed slots never carry a leftover binding
+-- into a fresh session regardless of whether anything ever claims them.
+local function ClearAllUnboundSlots()
+	local clearedCount = 0
+	for _, slot in ipairs(POOL) do
+		if not boundHotkeys[slot] then
+			clearedCount = clearedCount + 1
+			ClearSlotBinding(slot)
+		end
+	end
+	debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
+end
+
 function hotkeyApi.OnRegisterAction(_, _)
   local request = GetNextRequest()
   debugLog("OnRegisterAction received, id: %s", (request and request.id) or "nil")
@@ -351,6 +368,12 @@ local function Init()
 
   RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
   debugLog("Init: RegisterEvent(HotkeyApi.Register_Action, ...) registered")
+
+  -- Clean up before anyone re-registers: any pool slot not already claimed
+  -- (per the blackboard state just loaded above) gets its key binding
+  -- cleared, so stale bindings from a previous session/different mod
+  -- combination never linger on a slot nothing currently uses.
+  ClearAllUnboundSlots()
 
   -- Notify MD that lua (re)loaded - consumers listen for md.HotkeyApi.Reloaded
   -- and (re-)send their registration in response.
