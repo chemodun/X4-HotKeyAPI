@@ -255,7 +255,6 @@ local function Init()
   optionsMenu.registerCallback("displayControls_modifyControlsOrder", hotkeyApi.OnDisplayControlsOrder)
   DebugError("hotkey_api: OptionsMenu callback registered")
   SetScript("onHotkey", hotkey)
-  SetScript("onUpdate", onUpdate)
   -- RegisterAddonBindings("ego_detailmonitor", "extra")
 end
 
