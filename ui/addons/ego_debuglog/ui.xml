@@ -1,53 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<diff>
-    <add sel="//bindinggroup[@id='debuglog']">
-        <binding action="INPUT_ACTION_DEBUG_0" />
-        <binding action="INPUT_ACTION_DEBUG_1" />
-        <binding action="INPUT_ACTION_DEBUG_2" />
-        <binding action="INPUT_ACTION_DEBUG_3" />
-        <binding action="INPUT_ACTION_DEBUG_4" />
-        <binding action="INPUT_ACTION_DEBUG_5" />
-        <binding action="INPUT_ACTION_DEBUG_6" />
-        <binding action="INPUT_ACTION_DEBUG_7" />
-        <binding action="INPUT_ACTION_DEBUG_8" />
-        <binding action="INPUT_ACTION_DEBUG_9" />
-        <binding action="INPUT_ACTION_DEBUG_A" />
-        <binding action="INPUT_ACTION_DEBUG_B" />
-        <binding action="INPUT_ACTION_DEBUG_C" />
-        <binding action="INPUT_ACTION_DEBUG_D" />
-        <binding action="INPUT_ACTION_DEBUG_E" />
-        <binding action="INPUT_ACTION_DEBUG_F" />
-        <binding action="INPUT_ACTION_DEBUG_G" />
-        <binding action="INPUT_ACTION_DEBUG_H" />
-        <binding action="INPUT_ACTION_DEBUG_I" />
-        <binding action="INPUT_ACTION_DEBUG_J" />
-        <binding action="INPUT_ACTION_DEBUG_K" />
-        <binding action="INPUT_ACTION_DEBUG_L" />
-        <binding action="INPUT_ACTION_DEBUG_M" />
-        <binding action="INPUT_ACTION_DEBUG_N" />
-        <binding action="INPUT_ACTION_DEBUG_O" />
-        <binding action="INPUT_ACTION_DEBUG_P" />
-        <binding action="INPUT_ACTION_DEBUG_Q" />
-        <binding action="INPUT_ACTION_DEBUG_R" />
-        <binding action="INPUT_ACTION_DEBUG_S" />
-        <binding action="INPUT_ACTION_DEBUG_T" />
-        <binding action="INPUT_ACTION_DEBUG_U" />
-        <binding action="INPUT_ACTION_DEBUG_V" />
-        <binding action="INPUT_ACTION_DEBUG_W" />
-        <binding action="INPUT_ACTION_DEBUG_X" />
-        <binding action="INPUT_ACTION_DEBUG_Y" />
-        <binding action="INPUT_ACTION_DEBUG_Z" />
-        <binding action="INPUT_ACTION_DEBUG_F1" />
-        <binding action="INPUT_ACTION_DEBUG_F2" />
-        <binding action="INPUT_ACTION_DEBUG_F3" />
-        <binding action="INPUT_ACTION_DEBUG_F4" />
-        <binding action="INPUT_ACTION_DEBUG_F5" />
-        <binding action="INPUT_ACTION_DEBUG_F6" />
-        <binding action="INPUT_ACTION_DEBUG_F7" />
-        <binding action="INPUT_ACTION_DEBUG_F8" />
-        <binding action="INPUT_ACTION_DEBUG_F9" />
-        <binding action="INPUT_ACTION_DEBUG_F10" />
-        <binding action="INPUT_ACTION_DEBUG_F11" />
-        <binding action="INPUT_ACTION_DEBUG_F12" />
-    </add>
-</diff>
+<addon name="ego_debuglog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../core/coreaddon.xsd">
+  <environment type="menus">
+    <file name="debuglog.lua" />
+    <dependency name="ego_viewHelper" />
+    <savedvariable name="__CORE_DEBUGLOG_LOG" storage="userdata" />
+    <bindinggroup id="debuglog" context="INPUT_CONTEXT_ADDON_DEBUGLOG" alwaysactive="true">
+      <binding action="INPUT_ACTION_OPEN_DEBUG_LOG" />
+      <!-- Hotkey API (POC) - working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12
+           (48 actions, numeric ids 23-70). See claude/mod-hotkey_api.md. -->
+      <binding action="INPUT_ACTION_DEBUG_0" />
+      <binding action="INPUT_ACTION_DEBUG_1" />
+      <binding action="INPUT_ACTION_DEBUG_2" />
+      <binding action="INPUT_ACTION_DEBUG_3" />
+      <binding action="INPUT_ACTION_DEBUG_4" />
+      <binding action="INPUT_ACTION_DEBUG_5" />
+      <binding action="INPUT_ACTION_DEBUG_6" />
+      <binding action="INPUT_ACTION_DEBUG_7" />
+      <binding action="INPUT_ACTION_DEBUG_8" />
+      <binding action="INPUT_ACTION_DEBUG_9" />
+      <binding action="INPUT_ACTION_DEBUG_A" />
+      <binding action="INPUT_ACTION_DEBUG_B" />
+      <binding action="INPUT_ACTION_DEBUG_C" />
+      <binding action="INPUT_ACTION_DEBUG_D" />
+      <binding action="INPUT_ACTION_DEBUG_E" />
+      <binding action="INPUT_ACTION_DEBUG_F" />
+      <binding action="INPUT_ACTION_DEBUG_G" />
+      <binding action="INPUT_ACTION_DEBUG_H" />
+      <binding action="INPUT_ACTION_DEBUG_I" />
+      <binding action="INPUT_ACTION_DEBUG_J" />
+      <binding action="INPUT_ACTION_DEBUG_K" />
+      <binding action="INPUT_ACTION_DEBUG_L" />
+      <binding action="INPUT_ACTION_DEBUG_M" />
+      <binding action="INPUT_ACTION_DEBUG_N" />
+      <binding action="INPUT_ACTION_DEBUG_O" />
+      <binding action="INPUT_ACTION_DEBUG_P" />
+      <binding action="INPUT_ACTION_DEBUG_Q" />
+      <binding action="INPUT_ACTION_DEBUG_R" />
+      <binding action="INPUT_ACTION_DEBUG_S" />
+      <binding action="INPUT_ACTION_DEBUG_T" />
+      <binding action="INPUT_ACTION_DEBUG_U" />
+      <binding action="INPUT_ACTION_DEBUG_V" />
+      <binding action="INPUT_ACTION_DEBUG_W" />
+      <binding action="INPUT_ACTION_DEBUG_X" />
+      <binding action="INPUT_ACTION_DEBUG_Y" />
+      <binding action="INPUT_ACTION_DEBUG_Z" />
+      <binding action="INPUT_ACTION_DEBUG_F1" />
+      <binding action="INPUT_ACTION_DEBUG_F2" />
+      <binding action="INPUT_ACTION_DEBUG_F3" />
+      <binding action="INPUT_ACTION_DEBUG_F4" />
+      <binding action="INPUT_ACTION_DEBUG_F5" />
+      <binding action="INPUT_ACTION_DEBUG_F6" />
+      <binding action="INPUT_ACTION_DEBUG_F7" />
+      <binding action="INPUT_ACTION_DEBUG_F8" />
+      <binding action="INPUT_ACTION_DEBUG_F9" />
+      <binding action="INPUT_ACTION_DEBUG_F10" />
+      <binding action="INPUT_ACTION_DEBUG_F11" />
+      <binding action="INPUT_ACTION_DEBUG_F12" />
+    </bindinggroup>
+  </environment>
+</addon>
