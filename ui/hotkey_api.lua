@@ -1,11 +1,15 @@
 -- Hotkey API (POC)
 -- MD forwards consumer registration requests (id/area/isTargetRequired/name/
--- actionCue/actionLua) via raise_lua_event; this file owns the single
--- bound-hotkeys registry (persisted to a player blackboard var so slot
--- assignments survive Lua's own reload, since Lua state itself does not),
--- dispatches via a direct SetScript("onHotkey", ...) registration (the pool
--- lives in the always-active INPUT_CONTEXT_ADDON_DEBUGLOG context), and
--- feeds the General Controls page via OnDisplayControlsOrder.
+-- actionCue/actionLua) via a dedicated blackboard-list channel, mirroring
+-- sn_mod_support_apis' Interact_Menu_API Send_Command/Get_Next_Args pattern
+-- (raise_lua_event cannot reliably carry a complex/nested table as its
+-- param - only a bare notification is safe; the actual payload must travel
+-- via blackboard). This file owns the single bound-hotkeys registry
+-- (persisted to its own player blackboard var so slot assignments survive
+-- Lua's own reload, since Lua state itself does not), dispatches via a
+-- direct SetScript("onHotkey", ...) registration (the pool lives in the
+-- always-active INPUT_CONTEXT_ADDON_DEBUGLOG context), and feeds the
+-- General Controls page via OnDisplayControlsOrder.
 
 local ffi = require("ffi")
 local C = ffi.C
@@ -15,6 +19,14 @@ ffi.cdef[[
 ]]
 
 local PAGE_ID = 1972092431
+
+local function debugLog(fmt, ...)
+	if select("#", ...) > 0 then
+		DebugError("Hotkey API: " .. string.format(fmt, ...))
+	else
+		DebugError("Hotkey API: " .. fmt)
+	end
+end
 
 -- Working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12 (48 actions), in the exact
 -- order matching their confirmed-contiguous numeric ids 23-70 (discovery
@@ -45,6 +57,7 @@ end
 
 local BLACKBOARD_BOUND = "$hotkey_api_bound"
 local BLACKBOARD_SELECTED = "$hotkey_api_selected"
+local BLACKBOARD_REQUESTS = "$hotkey_api_requests"
 
 local hotkeyApi = {}
 
@@ -59,6 +72,14 @@ local playerId = nil
 -- actionLua get refreshed by re-registration after every Reloaded).
 local boundHotkeys = {}
 
+-- Local queue of pending registration requests, drained from
+-- BLACKBOARD_REQUESTS - mirrors sn_mod_support_apis' Interact_Menu_API
+-- L.queued_args/L.Get_Next_Args() exactly (md appends to a blackboard list
+-- via append_to_list, then raises a bare event; lua pulls the whole list in
+-- one go, queues it locally, and clears the blackboard var so md can start
+-- filling it again).
+local pendingRequests = {}
+
 local function SaveBoundHotkeys()
 	SetNPCBlackboard(playerId, BLACKBOARD_BOUND, boundHotkeys)
 end
@@ -67,7 +88,23 @@ local function LoadBoundHotkeys()
 	local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BOUND)
 	if ok and (type(stored) == "table") then
 		boundHotkeys = stored
+		debugLog("LoadBoundHotkeys: restored %d bound slot(s) from blackboard", select("#", next(stored) and 1 or 0))
 	end
+end
+
+local function GetNextRequest()
+	if #pendingRequests == 0 then
+		local ok, requestList = pcall(GetNPCBlackboard, playerId, BLACKBOARD_REQUESTS)
+		if ok and (type(requestList) == "table") then
+			for _, request in ipairs(requestList) do
+				table.insert(pendingRequests, request)
+			end
+			debugLog("GetNextRequest: pulled %d request(s) from blackboard", #requestList)
+		end
+		-- Clear the md var by writing nil, so md can start filling it again.
+		SetNPCBlackboard(playerId, BLACKBOARD_REQUESTS, nil)
+	end
+	return table.remove(pendingRequests, 1)
 end
 
 local function FindSlotById(id)
@@ -88,9 +125,11 @@ local function FindFreeSlot()
 	return nil
 end
 
-function hotkeyApi.OnRegisterAction(_, request)
+function hotkeyApi.OnRegisterAction(_, _)
+	local request = GetNextRequest()
+	debugLog("OnRegisterAction received, id: %s", (request and request.id) or "nil")
 	if (type(request) ~= "table") or (type(request.id) ~= "string") then
-		DebugError("hotkey_api: Register_Action received an invalid request")
+		debugLog("Register_Action received an invalid request")
 		return
 	end
 
@@ -98,9 +137,12 @@ function hotkeyApi.OnRegisterAction(_, request)
 	if not slot then
 		slot = FindFreeSlot()
 		if not slot then
-			DebugError("hotkey_api: no free slot left for id '" .. request.id .. "' - pool exhausted")
+			debugLog("no free slot left for id '" .. request.id .. "' - pool exhausted")
 			return
 		end
+		debugLog("OnRegisterAction: claimed new slot %s for id '%s'", slot, request.id)
+	else
+		debugLog("OnRegisterAction: reusing existing slot %s for id '%s'", slot, request.id)
 	end
 
 	boundHotkeys[slot] = {
@@ -143,28 +185,44 @@ local function GetSelectedObjectForArea(area)
 end
 
 function hotkeyApi.onHotKey(action)
+  debugLog("onHotKey: received action '%s'", tostring(action))
 	local record = boundHotkeys[action]
 	if not record then
 		return
 	end
 
+	debugLog("onHotKey: action %s fired for id '%s' (area=%s, isTargetRequired=%s)",
+		action, tostring(record.id), tostring(record.area), tostring(record.isTargetRequired))
+
 	local selected = GetSelectedObjectForArea(record.area)
 
 	if record.isTargetRequired and not selected then
+		debugLog("onHotKey: isTargetRequired but no selection/target for area '%s' - skipping", tostring(record.area))
 		PlaySound("ui_target_set_fail")
 		return
 	end
 
 	SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, selected)
 	AddUITriggeredEvent("HotkeyApi", "execute_action", action)
+	debugLog("onHotKey: dispatched execute_action for id '%s' (slot %s)", tostring(record.id), action)
 end
+
+-- Row name resolution: menu.getControlName("actions", code) always reads
+-- ReadText(1005, code) - a static vanilla text page with no entry for our
+-- DEBUG action ids, so a plain {"actions", numericId, ...} row falls back to
+-- showing the bare number. ADDON_DETAILMONITOR_I/etc. avoid this exact
+-- problem by using {"functions", N} rows instead: getControlName("functions",
+-- N) reads config.input.controlFunctions[N].name - a plain Lua table we can
+-- write into ourselves. Offsetting by 100000 keeps our keys well clear of
+-- Ego's own controlFunctions entries (seen only in the low hundreds).
+local FUNCTION_KEY_BASE = 100000
 
 -- ADDON_DETAILMONITOR_I/etc. live in controlsorder.space ("Menu Access"
 -- group), so our rows go there too, as our own group. Once inserted, the
 -- existing remap/add/remove/reset button machinery in
 -- menu.displayControlRow/menu.buttonControl/menu.remapInputInternal handles
 -- everything generically by controltype+code - no further hook needed there.
-function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, _config)
+function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config)
 	if optionParameter ~= "keyboard_space" then
 		return controlsorder
 	end
@@ -188,11 +246,22 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, _confi
 	for _, slot in ipairs(POOL) do
 		local record = boundHotkeys[slot]
 		local numericId = POOL_NUMERIC_IDS[slot]
-		if record and numericId then
+		if record and numericId and config and config.input and config.input.controlFunctions then
+			local functionKey = FUNCTION_KEY_BASE + numericId
+			config.input.controlFunctions[functionKey] = {
+				name = record.name,
+				definingcontrol = { "actions", numericId },
+				actions = { numericId },
+				states = {},
+				ranges = {},
+				contexts = { 1, 2 },
+			}
 			rowCount = rowCount + 1
-			groupRow[rowCount] = { "actions", numericId, nil, record.name }
+			groupRow[rowCount] = { "functions", functionKey }
 		end
 	end
+
+	debugLog("OnDisplayControlsOrder: rendering %d bound row(s)", rowCount)
 
 	if rowCount > 0 then
 		table.insert(controlsorder, groupRow)
@@ -202,23 +271,30 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, _confi
 end
 
 local function Init()
+	debugLog("Initializing Hotkey API.")
 	playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
 
 	LoadBoundHotkeys()
 
 	mapMenu = Helper.getMenu("MapMenu")
+	debugLog("Init: MapMenu %s", mapMenu and "found" or "NOT found")
 	optionsMenu = Helper.getMenu("OptionsMenu")
+	debugLog("Init: OptionsMenu %s", optionsMenu and "found" or "NOT found")
 	if optionsMenu and (type(optionsMenu.registerCallback) == "function") then
 		optionsMenu.registerCallback("displayControls_modifyControlsOrder", hotkeyApi.OnDisplayControlsOrder)
+		debugLog("Init: registered displayControls_modifyControlsOrder callback")
 	end
 
 	SetScript("onHotkey", hotkeyApi.onHotKey)
+	debugLog("Init: SetScript(onHotkey, ...) registered")
 
 	RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
+	debugLog("Init: RegisterEvent(HotkeyApi.Register_Action, ...) registered")
 
 	-- Notify MD that lua (re)loaded - consumers listen for md.HotkeyApi.Reloaded
 	-- and (re-)send their registration in response.
 	AddUITriggeredEvent("HotkeyApi", "reloaded")
+	debugLog("Init: raised HotkeyApi/reloaded")
 end
 
 Register_OnLoad_Init(Init)
