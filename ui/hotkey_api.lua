@@ -372,7 +372,14 @@ local function ProcessRegistration(request)
 end
 
 function hotkeyApi.OnRegisterAction(_, _)
-  ProcessRegistration(GetNextRequest())
+  local request = GetNextRequest()
+  if not request or (type(request) ~= "table") or (type(request.id) ~= "string") then
+    debugLog("OnRegisterAction received an invalid request")
+    return
+  else
+    request.actionLua = nil
+  end
+  ProcessRegistration(request)
 end
 
 -- Public, global entry point for other mods' Lua files to register hotkeys
@@ -402,6 +409,12 @@ end
 HotkeyApi = HotkeyApi or {}
 
 function HotkeyApi.RegisterAction(request)
+  if not (type(request) == "table" and type(request.id) == "string") then
+    debugLog("HotkeyApi.RegisterAction: invalid request table")
+    return
+  else
+    request.actionCue = nil
+  end
   return ProcessRegistration(request)
 end
 
