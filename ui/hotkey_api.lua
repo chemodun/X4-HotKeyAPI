@@ -25,6 +25,13 @@ local CONTROLS_PAGE_ID = "hotkey_api_controls"
 local MANAGEMENT_PAGE_ID = "hotkey_api_management"
 local REQUESTS_PAGE_ID = "hotkey_api_requests"
 
+-- Protocol version this build understands. A registration request may
+-- carry its own request.version (default 1 if omitted) - anything newer
+-- than this is rejected outright in ProcessRegistration, rather than risk
+-- silently misinterpreting a contract this build doesn't know about yet.
+-- onHotKey's dispatch is likewise versioned per bound record.
+local API_VERSION = 1
+
 -- Must be declared before debugLog() below so debugLog can see it as an
 -- upvalue - default true (matches the always-on behaviour this mod has had
 -- so far) until LoadDebugEnabled() restores the player's actual choice.
@@ -309,6 +316,12 @@ local function ProcessRegistration(request)
     return
   end
 
+  local version = tonumber(request.version) or 1
+  if version > API_VERSION then
+    debugLog("ProcessRegistration: id '%s' requests version %s, newer than supported %d - rejecting", request.id, tostring(version), API_VERSION)
+    return
+  end
+
   -- Tracked for the requests-management page regardless of slot/block
   -- status - this is the only place that knows about every id a consumer
   -- ever tries to register, bound or not.
@@ -348,6 +361,7 @@ local function ProcessRegistration(request)
     name = request.name or request.id,
     actionCue = request.actionCue,
     actionLua = request.actionLua,
+    version = version,
     confirmed = true,
   }
   SaveBoundHotkeys()
@@ -482,42 +496,52 @@ function hotkeyApi.onHotKey(action)
     return
   end
 
-  local selected = GetSelectedObjectForArea(currentArea)
-  -- MD marshals booleans as 1/0 (per Interact_Menu_API's own documented
-  -- convention); a direct-Lua registration (HotkeyApi.RegisterAction)
-  -- supplies a real Lua boolean instead - accept either.
-  local isObjectRequired = (record.isObjectRequired == 1) or (record.isObjectRequired == true)
+  -- Versioned dispatch - everything below is the version 1 contract.
+  -- Records persisted before versioning existed have no .version field;
+  -- treat those as version 1 too (ProcessRegistration defaults the same
+  -- way for incoming requests missing request.version).
+  local version = record.version or 1
+  if version == 1 then
 
-  if isObjectRequired and not selected then
-    debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
-    -- PlaySound("ui_target_set_fail")
-    return
-  elseif isObjectRequired then
-    debugLog("onHotKey: isObjectRequired and selected object/component %s for area '%s'", tostring(selected), tostring(record.area))
-  end
+    local selected = GetSelectedObjectForArea(currentArea)
+    -- MD marshals booleans as 1/0 (per Interact_Menu_API's own documented
+    -- convention); a direct-Lua registration (HotkeyApi.RegisterAction)
+    -- supplies a real Lua boolean instead - accept either.
+    local isObjectRequired = (record.isObjectRequired == 1) or (record.isObjectRequired == true)
 
-  -- Direct-Lua dispatch: a real function call, no blackboard/event relay
-  -- needed at all (that machinery only exists for the MD boundary).
-  if record.actionLua then
-    debugLog("onHotKey: dispatching actionLua callback for id '%s' (slot %s)", tostring(record.id), action)
-    local ok, err = pcall(record.actionLua, { id = record.id, object = selected })
-    if not ok then
-      debugLog("onHotKey: actionLua callback for id '%s' errored: %s", tostring(record.id), tostring(err))
+    if isObjectRequired and not selected then
+      debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
+      -- PlaySound("ui_target_set_fail")
+      return
+    elseif isObjectRequired then
+      debugLog("onHotKey: isObjectRequired and selected object/component %s for area '%s'", tostring(selected), tostring(record.area))
     end
-    return
-  end
 
-  -- MD dispatch: only relevant (and only pays the blackboard-write/event
-  -- cost) when an MD cue was actually registered for this id.
-  if record.actionCue then
-    if selected then
-      SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, ConvertStringToLuaID(tostring(selected)))
-    else
-      SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, nil)
+    -- Direct-Lua dispatch: a real function call, no blackboard/event relay
+    -- needed at all (that machinery only exists for the MD boundary).
+    if record.actionLua then
+      debugLog("onHotKey: dispatching actionLua callback for id '%s' (slot %s)", tostring(record.id), action)
+      local ok, err = pcall(record.actionLua, { id = record.id, object = selected })
+      if not ok then
+        debugLog("onHotKey: actionLua callback for id '%s' errored: %s", tostring(record.id), tostring(err))
+      end
+      return
     end
-    AddUITriggeredEvent("HotkeyApi", "execute_action", action)
-    debugLog("onHotKey: dispatched execute_action (MD) for id '%s' (slot %s)", tostring(record.id), action)
-    return
+
+    -- MD dispatch: only relevant (and only pays the blackboard-write/event
+    -- cost) when an MD cue was actually registered for this id.
+    if record.actionCue then
+      if selected then
+        SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, ConvertStringToLuaID(tostring(selected)))
+      else
+        SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, nil)
+      end
+      AddUITriggeredEvent("HotkeyApi", "execute_action", action)
+      debugLog("onHotKey: dispatched execute_action (MD) for id '%s' (slot %s)", tostring(record.id), action)
+      return
+    end
+  else
+    debugLog("onHotKey: id '%s' has unsupported version %s - skipping", tostring(record.id), tostring(version))
   end
 end
 

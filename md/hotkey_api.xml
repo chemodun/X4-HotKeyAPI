@@ -113,6 +113,12 @@
       * id
         - String, unique identifier of this action, chosen by the calling mod.
         - The same id always maps to the same physical hotkey slot once assigned.
+      * version = 1
+        - Number. Protocol version this request was built for - omit to use
+          the default of 1. A request asking for a version newer than this
+          build's supported version is rejected outright (not silently
+          misinterpreted), so a future incompatible contract change is safe
+          to ship without breaking older consumers using the old shape.
       * area = 'any'
         - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
           to fire and what "selected object" means for isObjectRequired.
@@ -127,8 +133,10 @@
         - Cue reference, signalled when the hotkey fires and any target
           requirement is satisfied. Receives param=table[$id=id].
       * actionLua
-        - Reserved for future use (a lua-side callback identifier). Stored, but
-          not invoked yet.
+        - Lua-side callback (a function value) - only usable via the direct-Lua
+          registration path (HotkeyApi.RegisterAction), not from MD, since MD
+          has no way to construct a Lua function reference. Invoked directly
+          from onHotKey with {id, object}, no MD/blackboard involvement.
 
       Usage example:
         ```xml
