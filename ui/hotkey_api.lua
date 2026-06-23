@@ -205,6 +205,39 @@ local function GetRequestStatus(id)
   end
 end
 
+-- Human-readable text for whatever key(s) are currently bound to a slot's
+-- numeric action id, or nil if nothing is bound yet. Reuses
+-- menu.getInputName (gameoptions.xpl:5177) - the same function the vanilla
+-- remap UI itself uses to render a key's display name - via optionsMenu,
+-- since it's a method on the same shared menu table, not a standalone
+-- global.
+local function GetAssignedKeyText(slot)
+  local numericId = POOL_NUMERIC_IDS[slot]
+  if not (numericId and optionsMenu and optionsMenu.getInputName) then
+    return nil
+  end
+  local ok, actions = pcall(GetInputActionMap)
+  if not ok or (type(actions) ~= "table") then
+    return nil
+  end
+  local inputs = actions[numericId]
+  if type(inputs) ~= "table" then
+    return nil
+  end
+
+  local names = {}
+  for _, input in ipairs(inputs) do
+    local nameOk, name = pcall(optionsMenu.getInputName, input[1], input[2], input[3] or 0)
+    if nameOk and (type(name) == "string") and (name ~= "") then
+      table.insert(names, name)
+    end
+  end
+  if #names == 0 then
+    return nil
+  end
+  return table.concat(names, " / ")
+end
+
 -- All ids seen this session, alphabetically by display name - the order the
 -- requests-management page lists them in.
 local function GetSortedRequestIds()
@@ -776,7 +809,19 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
     local status = GetRequestStatus(id)
     local checked = not blockedIds[id]
     local checkboxActive = checked or hasFreeSlot
-    local statusText = ReadText(PAGE_ID, (status == "bound") and 17 or (status == "waiting") and 18 or 19)
+    local statusText
+    if status == "bound" then
+      local assignedKeyText = GetAssignedKeyText(FindSlotById(id))
+      if assignedKeyText then
+        statusText = ReadText(PAGE_ID, 27) .. ": " .. assignedKeyText
+      else
+        statusText = ReadText(PAGE_ID, 17)
+      end
+    elseif status == "waiting" then
+      statusText = ReadText(PAGE_ID, 18)
+    else
+      statusText = ReadText(PAGE_ID, 19)
+    end
 
     local row = ftable:addRow(true, { fixed = false })
     row[1]:createCheckBox(function() return not blockedIds[id] end, { active = checkboxActive, height = config.standardTextHeight })

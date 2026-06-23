@@ -19,7 +19,7 @@
 
             <!-- Hotkey Requests page -->
             <t id="16">Enabled</t>
-            <t id="17">Bound</t>
+            <t id="17">Available</t>
             <t id="18">Waiting (pool full)</t>
             <t id="19">Blocked</t>
             <t id="20">&lt; Prev</t>
@@ -29,6 +29,7 @@
             <t id="24">Status</t>
             <t id="25">Enable Debug Logging</t>
             <t id="26">Disabled</t>
+            <t id="27">Assigned</t>
         </page>
     </add>
 </diff>
