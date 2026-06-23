@@ -22,7 +22,7 @@
 
             <!-- Hotkey Requests status texts -->
             <t id="1231">Available</t>
-            <t id="1232">Waiting \(pool full\)</t>
+            <t id="1232">Waiting</t>
             <t id="1233">Blocked</t>
             <t id="1234">Assigned</t>
             <!-- Hotkey Requests page row buttons -->
