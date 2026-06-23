@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Chinese Traditional text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="熱鍵API" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">熱鍵API</t>
+            <t id="2">允許其他模組註冊自訂熱鍵操作，可透過原生的「選項 &gt; 控制」選單進行按鍵指派。</t>
+
+            <!-- Settings page -->
+            <t id="1000">熱鍵管理</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">熱鍵綁定</t>
+
+            <t id="1200">熱鍵請求</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">已啟用</t>
+            <t id="1220">名稱</t>
+            <t id="1230">狀態</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">可用</t>
+            <t id="1232">等待中</t>
+            <t id="1233">已封鎖</t>
+            <t id="1234">已指派</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; 上一頁</t>
+            <t id="1292">下一頁 &gt;</t>
+            <t id="1293">套用</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">啟用偵錯記錄</t>
+            <t id="1901">已啟用</t>
+            <t id="1902">已停用</t>
+        </page>
+    </add>
+</diff>

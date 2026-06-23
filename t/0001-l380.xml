@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Ukrainian text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="API гарячих клавіш" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">API гарячих клавіш</t>
+            <t id="2">Дозволяє іншим модам реєструвати власні дії гарячих клавіш, які можна призначити через стандартне меню Параметри &gt; Керування.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Керування гарячими клавішами</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Призначення гарячих клавіш</t>
+
+            <t id="1200">Запити гарячих клавіш</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Увімкнено</t>
+            <t id="1220">Назва</t>
+            <t id="1230">Статус</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Доступно</t>
+            <t id="1232">Очікування</t>
+            <t id="1233">Блоковано</t>
+            <t id="1234">Призначено</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Назад</t>
+            <t id="1292">Далі &gt;</t>
+            <t id="1293">Застосувати</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Увімкнути журналювання налагодження</t>
+            <t id="1901">Увімкнено</t>
+            <t id="1902">Вимкнено</t>
+        </page>
+    </add>
+</diff>

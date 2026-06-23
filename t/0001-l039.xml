@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Italian text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="API tasti di scelta rapida" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">API tasti di scelta rapida</t>
+            <t id="2">Consente ad altre mod di registrare azioni personalizzate con tasti di scelta rapida, assegnabili tramite il menu nativo Opzioni &gt; Comandi.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Gestione tasti di scelta rapida</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Assegnazioni tasti di scelta rapida</t>
+
+            <t id="1200">Richieste tasti di scelta rapida</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Abilitato</t>
+            <t id="1220">Nome</t>
+            <t id="1230">Stato</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Disponibile</t>
+            <t id="1232">In attesa</t>
+            <t id="1233">Bloccato</t>
+            <t id="1234">Assegnato</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Prec.</t>
+            <t id="1292">Succ. &gt;</t>
+            <t id="1293">Applica</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Abilita registrazione di debug</t>
+            <t id="1901">Abilitato</t>
+            <t id="1902">Disabilitato</t>
+        </page>
+    </add>
+</diff>

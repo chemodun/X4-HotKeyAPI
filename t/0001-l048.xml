@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Polish text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="API klawiszy skrótów" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">API klawiszy skrótów</t>
+            <t id="2">Umożliwia innym modom rejestrowanie własnych akcji klawiszy skrótów, przypisywanych przez natywne menu Opcje &gt; Sterowanie.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Zarządzanie klawiszami skrótów</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Przypisania klawiszy skrótów</t>
+
+            <t id="1200">Żądania klawiszy skrótów</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Włączone</t>
+            <t id="1220">Nazwa</t>
+            <t id="1230">Status</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Dostępny</t>
+            <t id="1232">Oczekujący</t>
+            <t id="1233">Zablokowany</t>
+            <t id="1234">Przypisany</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Wstecz</t>
+            <t id="1292">Dalej &gt;</t>
+            <t id="1293">Zastosuj</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Włącz logowanie debugowania</t>
+            <t id="1901">Włączone</t>
+            <t id="1902">Wyłączone</t>
+        </page>
+    </add>
+</diff>

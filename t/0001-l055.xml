@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Portuguese text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="API de teclas de atalho" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">API de teclas de atalho</t>
+            <t id="2">Permite que outros mods registrem ações de teclas de atalho personalizadas, atribuíveis através do menu nativo Opções &gt; Controles.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Gerenciamento de teclas de atalho</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Atribuições de teclas de atalho</t>
+
+            <t id="1200">Solicitações de teclas de atalho</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Ativado</t>
+            <t id="1220">Nome</t>
+            <t id="1230">Status</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Disponível</t>
+            <t id="1232">Aguardando</t>
+            <t id="1233">Bloqueado</t>
+            <t id="1234">Atribuído</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Ant.</t>
+            <t id="1292">Próx. &gt;</t>
+            <t id="1293">Aplicar</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Ativar registro de depuração</t>
+            <t id="1901">Ativado</t>
+            <t id="1902">Desativado</t>
+        </page>
+    </add>
+</diff>

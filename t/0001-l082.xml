@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Korean text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="단축키 API" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">단축키 API</t>
+            <t id="2">다른 모드가 사용자 지정 단축키 동작을 등록할 수 있게 하며, 기본 옵션 &gt; 조작 메뉴를 통해 키를 할당할 수 있습니다.</t>
+
+            <!-- Settings page -->
+            <t id="1000">단축키 관리</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">단축키 할당</t>
+
+            <t id="1200">단축키 요청</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">활성화됨</t>
+            <t id="1220">이름</t>
+            <t id="1230">상태</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">사용 가능</t>
+            <t id="1232">대기 중</t>
+            <t id="1233">차단됨</t>
+            <t id="1234">할당됨</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; 이전</t>
+            <t id="1292">다음 &gt;</t>
+            <t id="1293">적용</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">디버그 로깅 활성화</t>
+            <t id="1901">활성화됨</t>
+            <t id="1902">비활성화됨</t>
+        </page>
+    </add>
+</diff>

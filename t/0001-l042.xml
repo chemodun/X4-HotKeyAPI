@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Czech text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="Rozhraní API klávesových zkratek" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">Rozhraní API klávesových zkratek</t>
+            <t id="2">Umožňuje ostatním modům registrovat vlastní akce klávesových zkratek, přiřaditelné přes nativní nabídku Možnosti &gt; Ovládání.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Správa klávesových zkratek</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Přiřazení klávesových zkratek</t>
+
+            <t id="1200">Požadavky na klávesové zkratky</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Povoleno</t>
+            <t id="1220">Název</t>
+            <t id="1230">Stav</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Dostupné</t>
+            <t id="1232">Čeká se</t>
+            <t id="1233">Blokováno</t>
+            <t id="1234">Přiřazeno</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Předch.</t>
+            <t id="1292">Další &gt;</t>
+            <t id="1293">Použít</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Povolit ladicí protokolování</t>
+            <t id="1901">Povoleno</t>
+            <t id="1902">Zakázáno</t>
+        </page>
+    </add>
+</diff>

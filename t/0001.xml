@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — English text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="Hotkey API" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">Hotkey API</t>
+            <t id="2">Lets other mods register custom hotkey actions, bindable through the native Options &gt; Controls keybinding UI.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Hotkey Management</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Hotkey Bindings</t>
+
+            <t id="1200">Hotkey Requests</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Enabled</t>
+            <t id="1220">Name</t>
+            <t id="1230">Status</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Available</t>
+            <t id="1232">Waiting</t>
+            <t id="1233">Blocked</t>
+            <t id="1234">Assigned</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Prev</t>
+            <t id="1292">Next &gt;</t>
+            <t id="1293">Apply</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Enable Debug Logging</t>
+            <t id="1901">Enabled</t>
+            <t id="1902">Disabled</t>
+        </page>
+    </add>
+</diff>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hotkey API — Turkish text, page 1972092431 -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="Kısayol Tuşu API'si" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">Kısayol Tuşu API'si</t>
+            <t id="2">Diğer modların, yerel Seçenekler &gt; Kontroller tuş atama menüsü üzerinden atanabilen özel kısayol tuşu eylemleri kaydetmesini sağlar.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Kısayol Tuşu Yönetimi</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Kısayol Tuşu Atamaları</t>
+
+            <t id="1200">Kısayol Tuşu İstekleri</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Etkin</t>
+            <t id="1220">Ad</t>
+            <t id="1230">Durum</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Kullanılabilir</t>
+            <t id="1232">Bekliyor</t>
+            <t id="1233">Engellendi</t>
+            <t id="1234">Atandı</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Önceki</t>
+            <t id="1292">Sonraki &gt;</t>
+            <t id="1293">Uygula</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Hata Ayıklama Günlüğünü Etkinleştir</t>
+            <t id="1901">Etkin</t>
+            <t id="1902">Devre Dışı</t>
+        </page>
+    </add>
+</diff>
