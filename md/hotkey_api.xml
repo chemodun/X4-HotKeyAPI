@@ -123,6 +123,11 @@
         - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
           to fire and what "selected object" means for isObjectRequired.
           'pilot' means the player is piloting a ship (no menu open).
+          'any' means "map or pilot, whichever is current" - it does NOT
+          mean "fires anywhere": the hotkey never fires while the detected
+          area is 'other' (some other menu open, or no clear context),
+          regardless of this setting, since there is no selected-object
+          notion there for isObjectRequired to fall back on.
       * isObjectRequired = false
         - Boolean. If true, the action is skipped (with a fail-sound) unless a
           map selection ('map') or ship target ('pilot') is currently present.

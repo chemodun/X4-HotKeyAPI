@@ -490,7 +490,7 @@ function hotkeyApi.onHotKey(action)
   debugLog("onHotKey: action %s fired for id '%s' (area=%s, isObjectRequired=%s, currentArea=%s)",
     action, tostring(record.id), tostring(record.area), tostring(record.isObjectRequired), tostring(currentArea))
 
-  if record.area ~= "any" and record.area ~= currentArea then
+  if currentArea == "other" or record.area ~= "any" and record.area ~= currentArea then
     debugLog("onHotKey: area mismatch (record.area=%s, currentArea=%s) - skipping", tostring(record.area), tostring(currentArea))
     -- PlaySound("ui_target_set_fail")
     return
