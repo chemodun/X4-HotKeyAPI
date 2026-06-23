@@ -570,7 +570,7 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config
 
   local groupRow = {
     id = "hotkey_api_group",
-    title = ReadText(PAGE_ID, 14),
+    title = ReadText(PAGE_ID, 1100),
     mappable = true,
   }
   local rowCount = 0
@@ -613,7 +613,7 @@ function hotkeyApi.IsControlsPage(optionParameter)
   if optionParameter ~= CONTROLS_PAGE_ID then
     return false
   end
-  return ReadText(PAGE_ID, 14)
+  return ReadText(PAGE_ID, 1100)
 end
 
 local function IsOurFunctionCode(controltype, controlcode)
@@ -655,21 +655,21 @@ function hotkeyApi.OnDisplayOptions(options, config)
   -- actual createCheckBox widgets.
   if config and config.optionDefinitions and (not config.optionDefinitions[MANAGEMENT_PAGE_ID]) then
     config.optionDefinitions[MANAGEMENT_PAGE_ID] = {
-      name = function() return ReadText(PAGE_ID, 10) end,
+      name = function() return ReadText(PAGE_ID, 1000) end,
       [1] = {
         id = "hotkey_api_bindings_nav",
-        name = function() return ReadText(PAGE_ID, 14) end,
+        name = function() return ReadText(PAGE_ID, 1100) end,
         submenu = CONTROLS_PAGE_ID,
       },
       [2] = {
         id = "hotkey_api_requests_nav",
-        name = function() return ReadText(PAGE_ID, 15) end,
+        name = function() return ReadText(PAGE_ID, 1200) end,
         submenu = REQUESTS_PAGE_ID,
       },
       [3] = {
         id = "hotkey_api_debug_toggle",
-        name = function() return ReadText(PAGE_ID, 25) end,
-        value = function() return debugEnabled and ReadText(PAGE_ID, 16) or ReadText(PAGE_ID, 26) end,
+        name = function() return ReadText(PAGE_ID, 1900) end,
+        value = function() return debugEnabled and ReadText(PAGE_ID, 1901) or ReadText(PAGE_ID, 1902) end,
         valuetype = "confirmation",
         callback = function() return hotkeyApi.OnToggleDebugEnabled(not debugEnabled) end,
       },
@@ -690,7 +690,7 @@ function hotkeyApi.OnDisplayOptions(options, config)
 
   table.insert(options, insertAt or (#options + 1), {
     id = "hotkey_api_management_nav",
-    name = function() return ReadText(PAGE_ID, 10) end,
+    name = function() return ReadText(PAGE_ID, 1000) end,
     submenu = MANAGEMENT_PAGE_ID,
   })
   debugLog("OnDisplayOptions: inserted hotkey_api_management_nav row at position %d", insertAt or (#options + 1))
@@ -815,15 +815,15 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   headerRow[1]:setBackgroundColSpan(3)
   headerRow[1]:createButton({ height = config.headerTextHeight }):setIcon(config.backarrow, { x = config.backarrowOffsetX })
   headerRow[1].handlers.onClick = function() return optionsMenu.onCloseElement("back") end
-  headerRow[2]:setColSpan(3):createText(ReadText(PAGE_ID, 15), config.headerTextProperties)
+  headerRow[2]:setColSpan(3):createText(ReadText(PAGE_ID, 1200), config.headerTextProperties)
   debugLog("DisplayRequestsManagement: header row built")
 
   -- Static column-title row, fixed (allowed to precede the scrollable
   -- checkbox rows, same as the back-arrow/title row above it).
   local columnHeaderRow = ftable:addRow(false, { fixed = true })
-  columnHeaderRow[1]:setColSpan(2):createText(ReadText(PAGE_ID, 16), config.subHeaderTextProperties)
-  columnHeaderRow[3]:createText(ReadText(PAGE_ID, 23), config.subHeaderTextProperties)
-  columnHeaderRow[4]:createText(ReadText(PAGE_ID, 24), config.subHeaderTextProperties)
+  columnHeaderRow[1]:setColSpan(2):createText(ReadText(PAGE_ID, 1210), config.subHeaderTextProperties)
+  columnHeaderRow[3]:createText(ReadText(PAGE_ID, 1220), config.subHeaderTextProperties)
+  columnHeaderRow[4]:createText(ReadText(PAGE_ID, 1230), config.subHeaderTextProperties)
 
   local startIdx = (requestsPage - 1) * rowsPerPage + 1
   local endIdx = math.min(startIdx + rowsPerPage - 1, #sortedIds)
@@ -837,14 +837,14 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
     if status == "bound" then
       local assignedKeyText = GetAssignedKeyText(FindSlotById(id))
       if assignedKeyText then
-        statusText = ReadText(PAGE_ID, 27) .. ": " .. assignedKeyText
+        statusText = ReadText(PAGE_ID, 1234) .. ": " .. assignedKeyText
       else
-        statusText = ReadText(PAGE_ID, 17)
+        statusText = ReadText(PAGE_ID, 1231)
       end
     elseif status == "waiting" then
-      statusText = ReadText(PAGE_ID, 18)
+      statusText = ReadText(PAGE_ID, 1232)
     else
-      statusText = ReadText(PAGE_ID, 19)
+      statusText = ReadText(PAGE_ID, 1233)
     end
 
     local row = ftable:addRow(true, { fixed = false })
@@ -859,7 +859,7 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   local footertable = frame:addTable(4, { tabOrder = 2, x = optionsMenu.table.x, y = offsety, width = optionsMenu.table.width, skipTabChange = true })
   debugLog("DisplayRequestsManagement: footertable created at offsety=%s", tostring(offsety))
   local footerRow = footertable:addRow(true, { fixed = true })
-  footerRow[1]:createButton({ active = requestsPage > 1 }):setText(ReadText(PAGE_ID, 20), { halign = "center" })
+  footerRow[1]:createButton({ active = requestsPage > 1 }):setText(ReadText(PAGE_ID, 1291), { halign = "center" })
   footerRow[1].handlers.onClick = function()
     if requestsPage > 1 then
       requestsPage = requestsPage - 1
@@ -867,14 +867,14 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
     end
   end
   footerRow[2]:createText(string.format("%d / %d", requestsPage, totalPages), { halign = "center" })
-  footerRow[3]:createButton({ active = requestsPage < totalPages }):setText(ReadText(PAGE_ID, 21), { halign = "center" })
+  footerRow[3]:createButton({ active = requestsPage < totalPages }):setText(ReadText(PAGE_ID, 1292), { halign = "center" })
   footerRow[3].handlers.onClick = function()
     if requestsPage < totalPages then
       requestsPage = requestsPage + 1
       optionsMenu.refresh()
     end
   end
-  footerRow[4]:createButton({}):setText(ReadText(PAGE_ID, 22), { halign = "center" })
+  footerRow[4]:createButton({}):setText(ReadText(PAGE_ID, 1293), { halign = "center" })
   footerRow[4].handlers.onClick = function() return hotkeyApi.RequestsPageRefresh() end
 
   frame:display()
