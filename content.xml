@@ -3,14 +3,56 @@
   id="hotkey_api"
   name="Hotkey API"
   author="Chem O`Dun"
-  version="100"
-  date="2026-06-21"
+  version="80001"
+  date="2026-06-23"
   save="false"
   sync="false"
   enabled="true"
   description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies.">
+  <text language="7"
+    description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies."></text>
+  <!-- French -->
+  <text language="33"
+    description="Permet à d'autres mods d'enregistrer des actions de raccourcis personnalisées, assignables par le joueur via le menu natif Options > Commandes. Chemins d'enregistrement MD et Lua direct, sans dépendance externe."></text>
+  <!-- Spanish -->
+  <text language="34"
+    description="Permite que otros mods registren acciones de teclas rápidas personalizadas, asignables por el jugador mediante el menú nativo Opciones > Controles. Rutas de registro MD y Lua directo, sin dependencias externas."></text>
+  <!-- Italian -->
+  <text language="39"
+    description="Consente ad altre mod di registrare azioni personalizzate con tasti di scelta rapida, assegnabili dal giocatore tramite il menu nativo Opzioni > Comandi. Percorsi di registrazione MD e Lua diretto, senza dipendenze esterne."></text>
+  <!-- Czech -->
+  <text language="42"
+    description="Umožňuje ostatním modům registrovat vlastní akce klávesových zkratek, které může hráč přiřadit přes nativní nabídku Možnosti > Ovládání. Registrace přes MD i přímo přes Lua, bez externích závislostí."></text>
+  <!-- English -->
   <text language="44"
     description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies."></text>
+  <!-- Polish -->
+  <text language="48"
+    description="Umożliwia innym modom rejestrowanie własnych akcji klawiszy skrótów, które gracz może przypisać przez natywne menu Opcje > Sterowanie. Rejestracja przez MD i bezpośrednio przez Lua, bez zewnętrznych zależności."></text>
+  <!-- German -->
+  <text language="49"
+    description="Ermöglicht anderen Mods die Registrierung eigener Hotkey-Aktionen, die der Spieler über die native Tastenbelegung in Optionen > Steuerung zuweisen kann. MD- und direkte Lua-Registrierungspfade, keine externen Abhängigkeiten."></text>
+  <!-- Portuguese -->
+  <text language="55"
+    description="Permite que outros mods registrem ações de teclas de atalho personalizadas, atribuíveis pelo jogador através do menu nativo Opções > Controles. Caminhos de registro via MD e Lua direto, sem dependências externas."></text>
+  <!-- Japanese -->
+  <text language="81"
+    description="他のMODが、プレイヤーがネイティブの「オプション > 操作」キー割り当てメニューから割り当て可能な、カスタムホットキー動作を登録できるようにします。MDおよび直接Luaによる登録経路があり、外部依存はありません。"></text>
+  <!-- Korean -->
+  <text language="82"
+    description="다른 모드가 사용자 지정 단축키 동작을 등록할 수 있게 하며, 플레이어가 기본 옵션 > 조작 메뉴를 통해 키를 할당할 수 있습니다. MD 및 직접 Lua 등록 경로를 제공하며, 외부 종속성이 없습니다."></text>
+  <!-- Chinese Simplified -->
+  <text language="86"
+    description="允许其他模组注册自定义热键操作，玩家可通过原生的&quot;选项 > 控制&quot;菜单进行键位分配。提供MD与直接Lua两种注册方式，无外部依赖。"></text>
+  <!-- Chinese Traditional -->
+  <text language="88"
+    description="允許其他模組註冊自訂熱鍵操作，玩家可透過原生的「選項 > 控制」選單進行按鍵指派。提供MD與直接Lua兩種註冊方式，無外部依賴。"></text>
+  <!-- Turkish -->
+  <text language="90"
+    description="Diğer modların, oyuncunun yerel Seçenekler > Kontroller tuş atama menüsü üzerinden atayabileceği özel kısayol tuşu eylemleri kaydetmesini sağlar. MD ve doğrudan Lua kayıt yolları, harici bağımlılık yok."></text>
+  <!-- Ukrainian -->
+  <text language="380"
+    description="Дозволяє іншим модам реєструвати власні дії гарячих клавіш, які гравець може призначити через стандартне меню Параметри > Керування. Реєстрація через MD та безпосередньо через Lua, без зовнішніх залежностей."></text>
   <dependency version="800"></dependency>
   <dependency id="kuerteeUIExtensionsAndHUD" optional="false" name="kuertee UI Extensions and HUD" version="804"></dependency>
 </content>
