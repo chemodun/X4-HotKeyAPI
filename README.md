@@ -163,7 +163,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Changelog
 
-### [1.00] - 2026-06-23
+### [8.00.01] - 2026-06-23
 
 - **Added**
   - Initial version: 48-action pool, MD and direct-Lua registration paths, Hotkey Management/Bindings/Requests pages, cross-page conflict checking, debug-logging toggle, orphaned-slot Clearance sweep, request versioning.
