@@ -1,4 +1,4 @@
--- Hotkey API (POC)
+-- Hotkey API
 -- MD forwards consumer registration requests (id/area/isObjectRequired/name/
 -- actionCue/actionLua) via a dedicated blackboard-list channel, mirroring
 -- sn_mod_support_apis' Interact_Menu_API Send_Command/Get_Next_Args pattern

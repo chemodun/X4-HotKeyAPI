@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <mdscript name="HotkeyApi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <!--@doc-title Hotkey API (POC) -->
+  <!--@doc-title Hotkey API -->
   <!--
-    MD-facing contract for the Hotkey API proof-of-concept. Mirrors
+    MD-facing contract for the Hotkey API. Mirrors
     sn_mod_support_apis' Interact_Menu_API/Hotkey_API pattern: consumers listen
     for Reloaded, then call Register_Action with their own cue as the callback.
 

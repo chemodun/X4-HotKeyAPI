@@ -1,4 +1,4 @@
-# Hotkey API (POC)
+# Hotkey API
 
 An API mod for X4: Foundations that lets other mods register custom hotkey actions - bindable by the player through the native Options > Controls keybinding UI, with no external process and no dependency on *SirNukes Mod Support APIs*' own Hotkey API.
 
