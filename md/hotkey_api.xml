@@ -13,204 +13,196 @@
   <cues>
 
     <!--
-      Main cue for this API extension. Just a namespace for the cues below.
+      Library to determine the debug logging chance for this cue execution, based on
+      the same persisted blackboard var the rest of the API's debug_text calls read from.
+      Used by every cue below that has debug logging, to keep it all in sync and avoid
+      repeating the same logic everywhere.
       -->
-    <cue name="Main">
+    <library name="GetDebugChance" purpose="include_actions">
       <actions>
         <set_value name="$debugChance" exact="0" />
-        <include_actions ref="GetDebugChance" />
+        <do_if value="@player.entity.$hotkey_api_debug_enabled == true or @player.entity.$hotkey_api_debug_enabled == 1">
+          <set_value name="$debugChance" exact="100" />
+        </do_if>
       </actions>
-      <cues>
+    </library>
 
-        <!--
-          Library to determine the debug logging chance for this cue execution, based on
-          the same persisted blackboard var the rest of the API's debug_text calls read from.
-          Used by every cue below that has debug logging, to keep it all in sync and avoid
-          repeating the same logic everywhere.
-          -->
-        <library name="GetDebugChance" purpose="include_actions">
-          <actions>
-            <set_value name="$debugChance" exact="0" />
-            <do_if value="@player.entity.$hotkey_api_debug_enabled == true or @player.entity.$hotkey_api_debug_enabled == 1">
-              <set_value name="$debugChance" exact="100" />
-            </do_if>
-          </actions>
-        </library>
+    <!--
+      Tells lua that an actual game is loaded/started (never fires just
+      sitting at the main menu) - replaces sn_mod_support_apis'
+      Register_OnLoad_Init for this purpose, dropping that dependency.
+      Mirrors sn_mod_support_apis/md/lua_loader.xml's own
+      Reload_Listener cue exactly (event_game_loaded/event_game_started
+      are the real native gate, not anything sn_mod_support_apis adds).
+      -->
+    <cue name="GameLoaded" instantiate="true">
+      <conditions>
+        <check_any>
+          <event_game_loaded />
+          <event_game_started />
+        </check_any>
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Game loaded event received, signalling lua'" chance="$debugChance" filter="general" />
+        <raise_lua_event name="'HotkeyApi.GameLoaded'" />
+      </actions>
+    </cue>
 
-        <!--
-          Tells lua that an actual game is loaded/started (never fires just
-          sitting at the main menu) - replaces sn_mod_support_apis'
-          Register_OnLoad_Init for this purpose, dropping that dependency.
-          Mirrors sn_mod_support_apis/md/lua_loader.xml's own
-          Reload_Listener cue exactly (event_game_loaded/event_game_started
-          are the real native gate, not anything sn_mod_support_apis adds).
-          -->
-        <cue name="GameLoaded" instantiate="true">
+    <!--
+      Lets lua re-trigger its own Init() after a /reloadui mid-session
+      (event_game_loaded/event_game_started won't fire again then, since
+      the game itself didn't reload) - lua proactively raises
+      "lua_ready" once at file-load time; this just relays it back to
+      "HotkeyApi.GameLoaded" so there is exactly one lua-side listener
+      for "game is ready, run Init()" regardless of which path
+      triggered it. A no-op if md isn't listening yet (still at the
+      main menu) - same as sn_mod_support_apis' own Send_Priority_Ready
+      round trip.
+      -->
+    <cue name="LuaReadyRelay" instantiate="true">
+      <conditions>
+        <event_ui_triggered screen="'HotkeyApi'" control="'lua_ready'" />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Lua ready event received, signalling GameLoaded cue.'" chance="$debugChance" filter="general" />
+        <raise_lua_event name="'HotkeyApi.GameLoaded'" />
+      </actions>
+    </cue>
+
+    <!--@doc-cue
+      Dummy cue used for signalling that the api (re)loaded.
+      Consumers should listen for this cue being signalled, and (re-)send
+      Register_Action in response every time - registrations must be re-sent on
+      every reload, since cue references do not survive across one.
+      -->
+    <cue name="Reloaded" instantiate="true">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Reloaded event received, API is ready.'"
+          chance="$debugChance" filter="scripts" />
+      </actions>
+    </cue>
+
+    <!--
+      Capture the lua-side notification that lua (re)loaded, and redistribute it
+      as a normal MD cue signal other extensions can listen to.
+      -->
+    <cue name="Reset_On_Lua_Reload" instantiate="true">
+      <conditions>
+        <event_ui_triggered screen="'HotkeyApi'" control="'reloaded'" />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
+        <signal_cue_instantly cue="Reloaded" />
+        <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
+        <raise_lua_event name="'HotkeyApi.Register_Request'" />
+      </actions>
+    </cue>
+
+    <!--@doc-cue
+      Register (or refresh) a hotkey action. Must be re-sent every time Reloaded
+      is signalled.
+
+      Param: table with the following items:
+      * id
+        - String, unique identifier of this action, chosen by the calling mod.
+        - The same id always maps to the same physical hotkey slot once assigned.
+      * area = 'any'
+        - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
+          to fire and what "selected object" means for isObjectRequired.
+          'pilot' means the player is piloting a ship (no menu open).
+      * isObjectRequired = false
+        - Boolean. If true, the action is skipped (with a fail-sound) unless a
+          map selection ('map') or ship target ('pilot') is currently present.
+      * name
+        - String, display name shown for this action's row in the General
+          Controls keybinding list.
+      * actionCue
+        - Cue reference, signalled when the hotkey fires and any target
+          requirement is satisfied. Receives param=table[$id=id].
+      * actionLua
+        - Reserved for future use (a lua-side callback identifier). Stored, but
+          not invoked yet.
+
+      Usage example:
+        ```xml
+        <cue name="Register_My_Action" instantiate="true">
           <conditions>
-            <check_any>
-              <event_game_loaded />
-              <event_game_started />
-            </check_any>
+            <event_cue_signalled cue="md.HotkeyApi.Reloaded" />
           </conditions>
           <actions>
-            <raise_lua_event name="'HotkeyApi.GameLoaded'" />
+            <signal_cue_instantly
+              cue="md.HotkeyApi.Register_Action"
+              param="table[
+                $id               = 'my_mod_my_action',
+                $area             = 'any',
+                $isObjectRequired = false,
+                $name             = 'My Action',
+                $actionCue        = My_Action_Cue,
+                ]"/>
           </actions>
         </cue>
+        ```
+      -->
+    <cue name="Register_Action" instantiate="true" namespace="this">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Register_Action cue received, id: %s'.[event.param.$id]" chance="$debugChance" filter="general" />
+        <do_if value="not player.entity.$hotkey_api_requests?">
+          <set_value name="player.entity.$hotkey_api_requests" exact="[]" />
+        </do_if>
+        <append_to_list name="player.entity.$hotkey_api_requests" exact="event.param" />
+        <raise_lua_event name="'HotkeyApi.Register_Action'" />
+      </actions>
+    </cue>
 
-        <!--
-          Lets lua re-trigger its own Init() after a /reloadui mid-session
-          (event_game_loaded/event_game_started won't fire again then, since
-          the game itself didn't reload) - lua proactively raises
-          "lua_ready" once at file-load time; this just relays it back to
-          "HotkeyApi.GameLoaded" so there is exactly one lua-side listener
-          for "game is ready, run Init()" regardless of which path
-          triggered it. A no-op if md isn't listening yet (still at the
-          main menu) - same as sn_mod_support_apis' own Send_Priority_Ready
-          round trip.
-          -->
-        <cue name="LuaReadyRelay" instantiate="true">
-          <conditions>
-            <event_ui_triggered screen="'HotkeyApi'" control="'lua_ready'" />
-          </conditions>
-          <actions>
-            <raise_lua_event name="'HotkeyApi.GameLoaded'" />
-          </actions>
-        </cue>
+    <!--@doc-cue
+      Lua signals that a clearance is requested, to allow the lua-side registry
+      to clean up any stale state before after registrations are processed.
+      -->
+    <cue name="Clearance" instantiate="true" namespace="this">
+      <conditions>
+        <event_object_signalled object="player.entity" param="'HotkeyApi.Clearance'" />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
+        <raise_lua_event name="'HotkeyApi.Clearance'" />
+      </actions>
+    </cue>
 
-        <!--@doc-cue
-          Dummy cue used for signalling that the api (re)loaded.
-          Consumers should listen for this cue being signalled, and (re-)send
-          Register_Action in response every time - registrations must be re-sent on
-          every reload, since cue references do not survive across one.
-          -->
-        <cue name="Reloaded" instantiate="true">
-          <conditions>
-            <event_cue_signalled />
-          </conditions>
-          <actions>
-            <include_actions ref="GetDebugChance" />
-            <debug_text text="'Hotkey API: Reloaded event received, API is ready.'"
-              chance="$debugChance" filter="scripts" />
-          </actions>
-        </cue>
-
-        <!--
-          Capture the lua-side notification that lua (re)loaded, and redistribute it
-          as a normal MD cue signal other extensions can listen to.
-          -->
-        <cue name="Reset_On_Lua_Reload" instantiate="true">
-          <conditions>
-            <event_ui_triggered screen="'HotkeyApi'" control="'reloaded'" />
-          </conditions>
-          <actions>
-            <include_actions ref="GetDebugChance" />
-            <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
-            <signal_cue_instantly cue="Reloaded" />
-            <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
-            <raise_lua_event name="'HotkeyApi.Register_Request'" />
-          </actions>
-        </cue>
-
-        <!--@doc-cue
-          Register (or refresh) a hotkey action. Must be re-sent every time Reloaded
-          is signalled.
-
-          Param: table with the following items:
-          * id
-            - String, unique identifier of this action, chosen by the calling mod.
-            - The same id always maps to the same physical hotkey slot once assigned.
-          * area = 'any'
-            - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
-              to fire and what "selected object" means for isObjectRequired.
-              'pilot' means the player is piloting a ship (no menu open).
-          * isObjectRequired = false
-            - Boolean. If true, the action is skipped (with a fail-sound) unless a
-              map selection ('map') or ship target ('pilot') is currently present.
-          * name
-            - String, display name shown for this action's row in the General
-              Controls keybinding list.
-          * actionCue
-            - Cue reference, signalled when the hotkey fires and any target
-              requirement is satisfied. Receives param=table[$id=id].
-          * actionLua
-            - Reserved for future use (a lua-side callback identifier). Stored, but
-              not invoked yet.
-
-          Usage example:
-            ```xml
-            <cue name="Register_My_Action" instantiate="true">
-              <conditions>
-                <event_cue_signalled cue="md.HotkeyApi.Reloaded" />
-              </conditions>
-              <actions>
-                <signal_cue_instantly
-                  cue="md.HotkeyApi.Register_Action"
-                  param="table[
-                    $id               = 'my_mod_my_action',
-                    $area             = 'any',
-                    $isObjectRequired = false,
-                    $name             = 'My Action',
-                    $actionCue        = My_Action_Cue,
-                    ]"/>
-              </actions>
-            </cue>
-            ```
-          -->
-        <cue name="Register_Action" instantiate="true" namespace="this">
-          <conditions>
-            <event_cue_signalled />
-          </conditions>
-          <actions>
-            <include_actions ref="GetDebugChance" />
-            <debug_text text="'Hotkey API: Register_Action cue received, id: %s'.[event.param.$id]" chance="$debugChance" filter="general" />
-            <do_if value="not player.entity.$hotkey_api_requests?">
-              <set_value name="player.entity.$hotkey_api_requests" exact="[]" />
-            </do_if>
-            <append_to_list name="player.entity.$hotkey_api_requests" exact="event.param" />
-            <raise_lua_event name="'HotkeyApi.Register_Action'" />
-          </actions>
-        </cue>
-
-        <!--@doc-cue
-          Lua signals that a clearance is requested, to allow the lua-side registry
-          to clean up any stale state before after registrations are processed.
-          -->
-        <cue name="Clearance" instantiate="true" namespace="this">
-          <conditions>
-            <event_object_signalled object="player.entity" param="'HotkeyApi.Clearance'" />
-          </conditions>
-          <actions>
-            <include_actions ref="GetDebugChance" />
-            <debug_text text="'Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
-            <raise_lua_event name="'HotkeyApi.Clearance'" />
-          </actions>
-        </cue>
-
-        <!--@doc-cue
-          Lua signals that a bound hotkey fired and any target requirement was
-          already checked/satisfied. event.param3 is the pool slot id (an
-          INPUT_ACTION_DEBUG_* string), used as the key into the same blackboard var
-          lua maintains, to look up and invoke the registered actionCue.
-          -->
-        <cue name="Execute_Action" instantiate="true" namespace="this">
-          <conditions>
-            <event_ui_triggered screen="'HotkeyApi'" control="'execute_action'" />
-          </conditions>
-          <actions>
-            <include_actions ref="GetDebugChance" />
-            <debug_text text="'Hotkey API: Execute_Action cue received, slot: %s'.[event.param3]" chance="$debugChance" filter="general" />
-            <set_value name="$slot" exact="event.param3" />
-            <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}" />
-            <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">
-              <set_value name="$params" exact="table[$id=$record.$id]" />
-              <do_if value="@player.entity.$hotkey_api_selected != null">
-                <set_value name="$params.$object" exact="player.entity.$hotkey_api_selected" />
-              </do_if>
-              <signal_cue_instantly cue="$record.$actionCue" param="$params" />
-            </do_if>
-          </actions>
-        </cue>
-      </cues>
+    <!--@doc-cue
+      Lua signals that a bound hotkey fired and any target requirement was
+      already checked/satisfied. event.param3 is the pool slot id (an
+      INPUT_ACTION_DEBUG_* string), used as the key into the same blackboard var
+      lua maintains, to look up and invoke the registered actionCue.
+      -->
+    <cue name="Execute_Action" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'HotkeyApi'" control="'execute_action'" />
+      </conditions>
+      <actions>
+        <include_actions ref="GetDebugChance" />
+        <debug_text text="'Hotkey API: Execute_Action cue received, slot: %s'.[event.param3]" chance="$debugChance" filter="general" />
+        <set_value name="$slot" exact="event.param3" />
+        <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}" />
+        <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">
+          <set_value name="$params" exact="table[$id=$record.$id]" />
+          <do_if value="@player.entity.$hotkey_api_selected != null">
+            <set_value name="$params.$object" exact="player.entity.$hotkey_api_selected" />
+          </do_if>
+          <signal_cue_instantly cue="$record.$actionCue" param="$params" />
+        </do_if>
+      </actions>
     </cue>
   </cues>
 </mdscript>

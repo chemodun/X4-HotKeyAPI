@@ -939,9 +939,11 @@ end
 -- supports for other mods' sake.
 local initialized = false
 local function OnGameLoaded()
+  debugLog("OnGameLoaded: game loaded cue received, initialized=%s", tostring(initialized))
   if initialized then
     return
   end
+  debugLog("OnGameLoaded: first load, calling Init()")
   initialized = true
   Init()
 end
