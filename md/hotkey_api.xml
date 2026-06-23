@@ -66,6 +66,7 @@
             <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
             <signal_cue_instantly cue="Reloaded" />
             <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
+            <raise_lua_event name="'HotkeyApi.Register_Request'" />
           </actions>
         </cue>
 

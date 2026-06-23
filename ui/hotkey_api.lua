@@ -264,11 +264,15 @@ local function ClearAllUnboundSlots()
 	debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
-function hotkeyApi.OnRegisterAction(_, _)
-  local request = GetNextRequest()
-  debugLog("OnRegisterAction received, id: %s", (request and request.id) or "nil")
+-- Shared by both registration entry points (MD's Register_Action, via
+-- OnRegisterAction/GetNextRequest below, and the direct-Lua HotkeyApi.
+-- RegisterAction global) - everything from here on is source-agnostic.
+-- request: table with id/area/isObjectRequired/name/actionCue/actionLua,
+-- same shape either path supplies it in.
+local function ProcessRegistration(request)
+  debugLog("ProcessRegistration received, id: %s", (request and request.id) or "nil")
   if (type(request) ~= "table") or (type(request.id) ~= "string") then
-    debugLog("Register_Action received an invalid request")
+    debugLog("ProcessRegistration received an invalid request")
     return
   end
 
@@ -287,7 +291,7 @@ function hotkeyApi.OnRegisterAction(_, _)
       SaveBoundHotkeys()
       ClearSlotBinding(boundSlot)
     end
-    debugLog("OnRegisterAction: id '%s' is blocked - skipping slot claim", request.id)
+    debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", request.id)
     return
   end
 
@@ -298,10 +302,10 @@ function hotkeyApi.OnRegisterAction(_, _)
       debugLog("no free slot left for id '" .. request.id .. "' - pool exhausted")
       return
     end
-    debugLog("OnRegisterAction: claimed new slot %s for id '%s'", slot, request.id)
+    debugLog("ProcessRegistration: claimed new slot %s for id '%s'", slot, request.id)
     ClearSlotBinding(slot)
   else
-    debugLog("OnRegisterAction: reusing existing slot %s for id '%s'", slot, request.id)
+    debugLog("ProcessRegistration: reusing existing slot %s for id '%s'", slot, request.id)
   end
 
   boundHotkeys[slot] = {
@@ -318,6 +322,40 @@ function hotkeyApi.OnRegisterAction(_, _)
   if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
   end
+end
+
+function hotkeyApi.OnRegisterAction(_, _)
+  ProcessRegistration(GetNextRequest())
+end
+
+-- Public, global entry point for other mods' Lua files to register hotkeys
+-- directly - no blackboard-list relay needed for this path, since a normal
+-- Lua function call has none of raise_lua_event's "can't carry a complex/
+-- nested table" limitation (that workaround was only ever needed for the
+-- MD boundary). Same request shape as MD's Register_Action cue, except
+-- actionLua may be a real Lua function (invoked directly from onHotKey)
+-- rather than (or in addition to) actionCue (an MD cue reference).
+--
+-- Lua consumers should call this every time they receive the
+-- "HotkeyApi.Register_Request" event (raised by md.HotkeyApi.
+-- Reset_On_Lua_Reload, mirroring MD's Reloaded cue) - registrations must be
+-- re-sent on every reload, since function references don't survive Lua's
+-- own reload any more than cue references survive MD's.
+--
+-- Usage:
+--   RegisterEvent("HotkeyApi.Register_Request", function()
+--     HotkeyApi.RegisterAction({
+--       id = "my_mod_my_action",
+--       area = "any",
+--       isObjectRequired = false,
+--       name = "My Action",
+--       actionLua = function(params) ... end,
+--     })
+--   end)
+HotkeyApi = HotkeyApi or {}
+
+function HotkeyApi.RegisterAction(request)
+  return ProcessRegistration(request)
 end
 
 
@@ -356,7 +394,7 @@ local function detectCurrentArea()
       break
     end
   end
-  if currentMenu then
+  if currentMenu and currentMenu.name ~= "TopLevelMenu" then
     if currentMenu.name == "MapMenu" then
       return "map"
     else
@@ -412,20 +450,39 @@ function hotkeyApi.onHotKey(action)
   end
 
   local selected = GetSelectedObjectForArea(currentArea)
+  -- MD marshals booleans as 1/0 (per Interact_Menu_API's own documented
+  -- convention); a direct-Lua registration (HotkeyApi.RegisterAction)
+  -- supplies a real Lua boolean instead - accept either.
+  local isObjectRequired = (record.isObjectRequired == 1) or (record.isObjectRequired == true)
 
-  if record.isObjectRequired == 1 and not selected then
+  if isObjectRequired and not selected then
     debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
     -- PlaySound("ui_target_set_fail")
     return
-  elseif record.isObjectRequired == 1 and selected then
+  elseif isObjectRequired then
     debugLog("onHotKey: isObjectRequired and selected object/component %s for area '%s'", tostring(selected), tostring(record.area))
-    SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, ConvertStringToLuaID(tostring(selected)))
-  else
-    SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, nil)
   end
 
-  AddUITriggeredEvent("HotkeyApi", "execute_action", action)
-  debugLog("onHotKey: dispatched execute_action for id '%s' (slot %s)", tostring(record.id), action)
+  -- Direct-Lua dispatch: a real function call, no blackboard/event relay
+  -- needed at all (that machinery only exists for the MD boundary).
+  if record.actionLua then
+    local ok, err = pcall(record.actionLua, { id = record.id, object = selected })
+    if not ok then
+      debugLog("onHotKey: actionLua callback for id '%s' errored: %s", tostring(record.id), tostring(err))
+    end
+  end
+
+  -- MD dispatch: only relevant (and only pays the blackboard-write/event
+  -- cost) when an MD cue was actually registered for this id.
+  if record.actionCue then
+    if selected then
+      SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, ConvertStringToLuaID(tostring(selected)))
+    else
+      SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, nil)
+    end
+    AddUITriggeredEvent("HotkeyApi", "execute_action", action)
+    debugLog("onHotKey: dispatched execute_action (MD) for id '%s' (slot %s)", tostring(record.id), action)
+  end
 end
 
 -- Row name resolution: menu.getControlName("actions", code) always reads
