@@ -466,10 +466,12 @@ function hotkeyApi.onHotKey(action)
   -- Direct-Lua dispatch: a real function call, no blackboard/event relay
   -- needed at all (that machinery only exists for the MD boundary).
   if record.actionLua then
+    debugLog("onHotKey: dispatching actionLua callback for id '%s' (slot %s)", tostring(record.id), action)
     local ok, err = pcall(record.actionLua, { id = record.id, object = selected })
     if not ok then
       debugLog("onHotKey: actionLua callback for id '%s' errored: %s", tostring(record.id), tostring(err))
     end
+    return
   end
 
   -- MD dispatch: only relevant (and only pays the blackboard-write/event
@@ -482,6 +484,7 @@ function hotkeyApi.onHotKey(action)
     end
     AddUITriggeredEvent("HotkeyApi", "execute_action", action)
     debugLog("onHotKey: dispatched execute_action (MD) for id '%s' (slot %s)", tostring(record.id), action)
+    return
   end
 end
 
