@@ -928,4 +928,28 @@ local function Init()
   BroadcastReloaded()
 end
 
-Register_OnLoad_Init(Init)
+-- Replaces sn_mod_support_apis' Register_OnLoad_Init (dropping that
+-- dependency entirely): md.HotkeyApi.GameLoaded only fires once an actual
+-- game is loaded/started (event_game_loaded/event_game_started never fire
+-- just sitting at the main menu), and md.HotkeyApi.LuaReadyRelay lets this
+-- re-fire after a /reloadui mid-session (when those native events won't
+-- recur, since the game itself didn't reload) - mirrors lua_loader.lua's
+-- own Send_Priority_Ready/Send_Ready round trip, simplified to one stage
+-- since nothing here needs the priority-ordering sn_mod_support_apis
+-- supports for other mods' sake.
+local initialized = false
+local function OnGameLoaded()
+  if initialized then
+    return
+  end
+  initialized = true
+  Init()
+end
+
+RegisterEvent("HotkeyApi.GameLoaded", OnGameLoaded)
+-- Proactively ask md to relay back, in case its GameLoaded cue instance
+-- already exists from an earlier game-load and just needs telling lua
+-- itself just reloaded - a no-op if md isn't listening yet (i.e. still at
+-- the main menu, no game loaded, same as lua_loader.lua's own comment on
+-- this exact pattern).
+AddUITriggeredEvent("HotkeyApi", "lua_ready")

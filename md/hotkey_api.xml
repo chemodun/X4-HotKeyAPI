@@ -36,6 +36,47 @@
             </do_if>
           </actions>
         </library>
+
+        <!--
+          Tells lua that an actual game is loaded/started (never fires just
+          sitting at the main menu) - replaces sn_mod_support_apis'
+          Register_OnLoad_Init for this purpose, dropping that dependency.
+          Mirrors sn_mod_support_apis/md/lua_loader.xml's own
+          Reload_Listener cue exactly (event_game_loaded/event_game_started
+          are the real native gate, not anything sn_mod_support_apis adds).
+          -->
+        <cue name="GameLoaded" instantiate="true">
+          <conditions>
+            <check_any>
+              <event_game_loaded />
+              <event_game_started />
+            </check_any>
+          </conditions>
+          <actions>
+            <raise_lua_event name="'HotkeyApi.GameLoaded'" />
+          </actions>
+        </cue>
+
+        <!--
+          Lets lua re-trigger its own Init() after a /reloadui mid-session
+          (event_game_loaded/event_game_started won't fire again then, since
+          the game itself didn't reload) - lua proactively raises
+          "lua_ready" once at file-load time; this just relays it back to
+          "HotkeyApi.GameLoaded" so there is exactly one lua-side listener
+          for "game is ready, run Init()" regardless of which path
+          triggered it. A no-op if md isn't listening yet (still at the
+          main menu) - same as sn_mod_support_apis' own Send_Priority_Ready
+          round trip.
+          -->
+        <cue name="LuaReadyRelay" instantiate="true">
+          <conditions>
+            <event_ui_triggered screen="'HotkeyApi'" control="'lua_ready'" />
+          </conditions>
+          <actions>
+            <raise_lua_event name="'HotkeyApi.GameLoaded'" />
+          </actions>
+        </cue>
+
         <!--@doc-cue
           Dummy cue used for signalling that the api (re)loaded.
           Consumers should listen for this cue being signalled, and (re-)send
