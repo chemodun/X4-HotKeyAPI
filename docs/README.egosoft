@@ -17,18 +17,20 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 [size=130][u]Requirements[/u][/size]
 [list]
-[*] [b]X4: Foundations[/b]: Version [b]9.00[/b] or higher.
-[*] [b]UI Extensions and HUD[/b]: by [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url], required for the generic [b]gameoptions.xpl[/b] callback hooks this mod registers into:
+[*] [b]X4: Foundations[/b]: Version [b]8.00HF4[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v8.0.4.9[/b] or higher by [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
+[list]
+[*] Available on Nexus Mods: [url=https://www.nexusmods.com/x4foundations/mods/552]UI Extensions and HUD[/url]
+[/list]
+[*] [b]X4: Foundations[/b]: Version [b]9.00[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v9.0.0.6[/b] or higher by [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
 [list]
 [*] Available on Nexus Mods: [url=https://www.nexusmods.com/x4foundations/mods/552]UI Extensions and HUD[/url]
 [/list]
 [/list]
-No other dependency is required - in particular, this mod does [b]not[/b] depend on [i]SirNukes Mod Support APIs[/i].
-
 [size=130][u]Installation[/u][/size]
-
-Local/development mod, not yet published to Steam Workshop or Nexus Mods.
-
+[list]
+[*] [b]Steam Workshop[/b]: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750545906]Hotkey API[/url]
+[*] [b]Nexus Mods[/b]: [url=https://www.nexusmods.com/x4foundations/mods/2181]Hotkey API[/url]
+[/list]
 [size=130][u]Player-facing UI[/u][/size]
 
 A [b]Hotkey Management[/b] entry is added to the top-level Options menu, right before [b]Settings[/b].
