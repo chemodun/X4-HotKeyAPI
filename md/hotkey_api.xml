@@ -65,6 +65,7 @@
             <include_actions ref="GetDebugChance" />
             <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
             <signal_cue_instantly cue="Reloaded" />
+            <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
           </actions>
         </cue>
 
@@ -125,6 +126,21 @@
             </do_if>
             <append_to_list name="player.entity.$hotkey_api_requests" exact="event.param" />
             <raise_lua_event name="'HotkeyApi.Register_Action'" />
+          </actions>
+        </cue>
+
+        <!--@doc-cue
+          Lua signals that a clearance is requested, to allow the lua-side registry
+          to clean up any stale state before after registrations are processed.
+          -->
+        <cue name="Clearance" instantiate="true" namespace="this">
+          <conditions>
+            <event_object_signalled object="player.entity" param="'HotkeyApi.Clearance'" />
+          </conditions>
+          <actions>
+            <include_actions ref="GetDebugChance" />
+            <debug_text text="'Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
+            <raise_lua_event name="'HotkeyApi.Clearance'" />
           </actions>
         </cue>
 

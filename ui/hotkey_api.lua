@@ -126,6 +126,9 @@ local function LoadBoundHotkeys()
   if ok and (type(stored) == "table") then
     boundHotkeys = stored
     debugLog("LoadBoundHotkeys: restored %d bound slot(s) from blackboard", select("#", next(stored) and 1 or 0))
+    for slot, record in pairs(boundHotkeys) do
+      record.confirmed = false
+    end
   end
 end
 
@@ -308,12 +311,26 @@ function hotkeyApi.OnRegisterAction(_, _)
     name = request.name or request.id,
     actionCue = request.actionCue,
     actionLua = request.actionLua,
+    confirmed = true,
   }
   SaveBoundHotkeys()
 
   if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
   end
+end
+
+
+function hotkeyApi.OnClearance()
+  debugLog("Clearance: clearing not confirmed (stale) bound slots")
+  for slot, record in pairs(boundHotkeys) do
+    if not record.confirmed then
+      debugLog("Clearance: slot %s for id '%s' was not confirmed - clearing", slot, tostring(record.id))
+      ClearSlotBinding(slot)
+      boundHotkeys[slot] = nil
+    end
+  end
+  SaveBoundHotkeys()
 end
 
 -- More precise than just "no menu is shown" - that would also be true while
@@ -791,6 +808,9 @@ local function Init()
 
   RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
   debugLog("Init: RegisterEvent(HotkeyApi.Register_Action, ...) registered")
+
+  RegisterEvent("HotkeyApi.Clearance", hotkeyApi.OnClearance)
+  debugLog("Init: RegisterEvent(HotkeyApi.Clearance, ...) registered")
 
   -- Clean up before anyone re-registers: any pool slot not already claimed
   -- (per the blackboard state just loaded above) gets its key binding
