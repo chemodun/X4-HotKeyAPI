@@ -17,15 +17,15 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 ## Requirements
 
-- **X4: Foundations**: Version **9.00** or higher.
-- **UI Extensions and HUD**: by [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659), required for the generic `gameoptions.xpl` callback hooks this mod registers into:
+- **X4: Foundations**: Version **8.00HF4** or higher and **UI Extensions and HUD**: Version **v8.0.4.9** or higher by [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659).
   - Available on Nexus Mods: [UI Extensions and HUD](https://www.nexusmods.com/x4foundations/mods/552)
-
-No other dependency is required - in particular, this mod does **not** depend on *SirNukes Mod Support APIs*.
+- **X4: Foundations**: Version **9.00** or higher and **UI Extensions and HUD**: Version **v9.0.0.6** or higher by [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659).
+  - Available on Nexus Mods: [UI Extensions and HUD](https://www.nexusmods.com/x4foundations/mods/552)
 
 ## Installation
 
-Local/development mod, not yet published to Steam Workshop or Nexus Mods.
+- **Steam Workshop**: [Hotkey API](https://steamcommunity.com/sharedfiles/filedetails/?id=3750545906)
+- **Nexus Mods**: [Hotkey API](https://www.nexusmods.com/x4foundations/mods/2181)
 
 ## Player-facing UI
 

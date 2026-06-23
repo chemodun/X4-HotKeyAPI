@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <content
-  id="hotkey_api"
+  id="ws_3750545906"
   name="Hotkey API"
   author="Chem O`Dun"
   version="80001"
@@ -8,6 +8,7 @@
   save="false"
   sync="false"
   enabled="true"
+  lastupdate="1782249040"
   description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies.">
   <text language="7"
     description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies."></text>
