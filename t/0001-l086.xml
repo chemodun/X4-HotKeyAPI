@@ -2,9 +2,9 @@
 <!-- Hotkey API — Chinese Simplified text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="热键API" descr="" voice="no">
+        <page id="1972092431" title="原生热键API" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">热键API</t>
+            <t id="1">原生热键API</t>
             <t id="2">允许其他模组注册自定义热键操作，可通过原生的"选项 &gt; 控制"菜单进行键位分配。</t>
 
             <!-- Settings page -->

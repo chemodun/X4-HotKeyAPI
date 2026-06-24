@@ -2,9 +2,9 @@
 <!-- Hotkey API — Portuguese text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="API de teclas de atalho" descr="" voice="no">
+        <page id="1972092431" title="API nativa de teclas de atalho" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">API de teclas de atalho</t>
+            <t id="1">API nativa de teclas de atalho</t>
             <t id="2">Permite que outros mods registrem ações de teclas de atalho personalizadas, atribuíveis através do menu nativo Opções &gt; Controles.</t>
 
             <!-- Settings page -->

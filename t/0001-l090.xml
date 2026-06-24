@@ -2,9 +2,9 @@
 <!-- Hotkey API — Turkish text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="Kısayol Tuşu API'si" descr="" voice="no">
+        <page id="1972092431" title="Yerel Kısayol Tuşu API'si" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">Kısayol Tuşu API'si</t>
+            <t id="1">Yerel Kısayol Tuşu API'si</t>
             <t id="2">Diğer modların, yerel Seçenekler &gt; Kontroller tuş atama menüsü üzerinden atanabilen özel kısayol tuşu eylemleri kaydetmesini sağlar.</t>
 
             <!-- Settings page -->

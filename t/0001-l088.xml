@@ -2,9 +2,9 @@
 <!-- Hotkey API — Chinese Traditional text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="熱鍵API" descr="" voice="no">
+        <page id="1972092431" title="原生熱鍵API" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">熱鍵API</t>
+            <t id="1">原生熱鍵API</t>
             <t id="2">允許其他模組註冊自訂熱鍵操作，可透過原生的「選項 &gt; 控制」選單進行按鍵指派。</t>
 
             <!-- Settings page -->

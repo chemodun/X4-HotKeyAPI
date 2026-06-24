@@ -2,9 +2,9 @@
 <!-- Hotkey API — French text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="API de raccourcis" descr="" voice="no">
+        <page id="1972092431" title="API native de raccourcis" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">API de raccourcis</t>
+            <t id="1">API native de raccourcis</t>
             <t id="2">Permet à d'autres mods d'enregistrer des raccourcis personnalisés, assignables via le menu natif Options &gt; Commandes.</t>
 
             <!-- Settings page -->

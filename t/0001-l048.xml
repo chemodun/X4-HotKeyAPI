@@ -2,9 +2,9 @@
 <!-- Hotkey API — Polish text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="API klawiszy skrótów" descr="" voice="no">
+        <page id="1972092431" title="Natywne API klawiszy skrótów" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">API klawiszy skrótów</t>
+            <t id="1">Natywne API klawiszy skrótów</t>
             <t id="2">Umożliwia innym modom rejestrowanie własnych akcji klawiszy skrótów, przypisywanych przez natywne menu Opcje &gt; Sterowanie.</t>
 
             <!-- Settings page -->

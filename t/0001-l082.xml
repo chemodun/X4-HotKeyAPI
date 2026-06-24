@@ -2,9 +2,9 @@
 <!-- Hotkey API — Korean text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="단축키 API" descr="" voice="no">
+        <page id="1972092431" title="네이티브 단축키 API" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">단축키 API</t>
+            <t id="1">네이티브 단축키 API</t>
             <t id="2">다른 모드가 사용자 지정 단축키 동작을 등록할 수 있게 하며, 기본 옵션 &gt; 조작 메뉴를 통해 키를 할당할 수 있습니다.</t>
 
             <!-- Settings page -->

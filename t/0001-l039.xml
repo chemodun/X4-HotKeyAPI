@@ -2,9 +2,9 @@
 <!-- Hotkey API — Italian text, page 1972092431 -->
 <diff>
     <add sel="/language">
-        <page id="1972092431" title="API tasti di scelta rapida" descr="" voice="no">
+        <page id="1972092431" title="API nativa dei tasti di scelta rapida" descr="" voice="no">
             <!-- mod identity -->
-            <t id="1">API tasti di scelta rapida</t>
+            <t id="1">API nativa dei tasti di scelta rapida</t>
             <t id="2">Consente ad altre mod di registrare azioni personalizzate con tasti di scelta rapida, assegnabili tramite il menu nativo Opzioni &gt; Comandi.</t>
 
             <!-- Settings page -->
