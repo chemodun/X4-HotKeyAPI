@@ -1,4 +1,4 @@
-[size=140][u]Hotkey API[/u][/size]
+[size=140][u]Native Hotkey API[/u][/size]
 
 An API mod for X4: Foundations that lets other mods register custom hotkey actions - bindable by the player through the native game keybinding UI, with no external process and no dependency on [i]SirNukes Mod Support APIs[/i]' own Hotkey API.
 
@@ -28,8 +28,8 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 [/list]
 [size=130][u]Installation[/u][/size]
 [list]
-[*] [b]Steam Workshop[/b]: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750545906]Hotkey API[/url]
-[*] [b]Nexus Mods[/b]: [url=https://www.nexusmods.com/x4foundations/mods/2181]Hotkey API[/url]
+[*] [b]Steam Workshop[/b]: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750545906]Native Hotkey API[/url]
+[*] [b]Nexus Mods[/b]: [url=https://www.nexusmods.com/x4foundations/mods/2181]Native Hotkey API[/url]
 [/list]
 [size=130][u]Player-facing UI[/u][/size]
 
