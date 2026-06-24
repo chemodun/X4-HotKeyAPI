@@ -35,6 +35,8 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 A [b]Hotkey Management[/b] entry is added to the top-level Options menu, right before [b]Settings[/b].
 
+[b]Important[/b]: this menu is only available when the save is loaded or new game is started, i.e. is not accessible from the main menu!
+
 [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-HotKeyAPI/refs/heads/main/docs/images/options_menu.png[/img][/spoiler]
 
 It contains:
