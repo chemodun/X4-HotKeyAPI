@@ -44,7 +44,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Game loaded event received, signalling lua'" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Game loaded event received, signalling lua'" chance="$debugChance" filter="general" />
         <raise_lua_event name="'HotkeyApi.GameLoaded'" />
       </actions>
     </cue>
@@ -66,7 +66,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Lua ready event received, signalling GameLoaded cue.'" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Lua ready event received, signalling GameLoaded cue.'" chance="$debugChance" filter="general" />
         <raise_lua_event name="'HotkeyApi.GameLoaded'" />
       </actions>
     </cue>
@@ -83,7 +83,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Reloaded event received, API is ready.'"
+        <debug_text text="'Hotkey API: Reloaded event received, API is ready.'"
           chance="$debugChance" filter="scripts" />
       </actions>
     </cue>
@@ -98,7 +98,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
         <signal_cue_instantly cue="Reloaded" />
         <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
         <raise_lua_event name="'HotkeyApi.Register_Request'" />
@@ -177,7 +177,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Register_Action cue received, id: %s'.[event.param.$id]" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Register_Action cue received, id: %s'.[event.param.$id]" chance="$debugChance" filter="general" />
         <do_if value="not player.entity.$hotkey_api_requests?">
           <set_value name="player.entity.$hotkey_api_requests" exact="[]" />
         </do_if>
@@ -196,7 +196,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
         <raise_lua_event name="'HotkeyApi.Clearance'" />
       </actions>
     </cue>
@@ -213,7 +213,7 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Native Hotkey API: Execute_Action cue received, slot: %s'.[event.param3]" chance="$debugChance" filter="general" />
+        <debug_text text="'Hotkey API: Execute_Action cue received, slot: %s'.[event.param3]" chance="$debugChance" filter="general" />
         <set_value name="$slot" exact="event.param3" />
         <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}" />
         <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">

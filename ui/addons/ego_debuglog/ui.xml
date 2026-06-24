@@ -6,7 +6,7 @@
     <savedvariable name="__CORE_DEBUGLOG_LOG" storage="userdata" />
     <bindinggroup id="debuglog" context="INPUT_CONTEXT_ADDON_DEBUGLOG" alwaysactive="true">
       <binding action="INPUT_ACTION_OPEN_DEBUG_LOG" />
-      <!-- Hotkey API - working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12
+      <!-- Native Hotkey API - working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12
            (48 actions, numeric ids 23-70). See claude/mod-hotkey_api.md. -->
       <binding action="INPUT_ACTION_DEBUG_0" />
       <binding action="INPUT_ACTION_DEBUG_1" />
