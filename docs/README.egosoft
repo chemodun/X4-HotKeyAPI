@@ -48,6 +48,8 @@ It contains:
   [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-HotKeyAPI/refs/heads/main/docs/images/hotkey_bindings.png[/img][/spoiler]
 
   [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-HotKeyAPI/refs/heads/main/docs/images/warning.png[/img][/spoiler]
+
+  [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-HotKeyAPI/refs/heads/main/docs/images/hard_warning.png[/img][/spoiler]
 [list]
 [*] [b]Hotkey Requests[/b] - lists every id any mod has tried to register this session, regardless of whether it currently holds a slot, with a checkbox per row:
 [/list]
