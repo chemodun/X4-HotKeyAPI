@@ -31,6 +31,8 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 A **Hotkey Management** entry is added to the top-level Options menu, right before **Settings**.
 
+**Important**: this menu is only available when the save is loaded or new game is started, i.e. is not accessible from the main menu!
+
 ![Options Menu](docs/images/options_menu.png)
 
 It contains:
