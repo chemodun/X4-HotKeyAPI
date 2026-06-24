@@ -148,6 +148,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 - **48-action hard ceiling.** `INPUT_ACTION_*` is a closed enum compiled into the game; this pool cannot be extended.
 - **Cross-page conflict checking is conservative, not area-aware.** Remapping one of this pool's keys checks for conflicts against every other Controls page, regardless of the hotkey's own `area` - this was deliberately simplified after testing showed per-area filtering wasn't reliable to scope correctly.
+- This **conservative** behavior in addition means that if a player assigns, despite a warning, a key combination that is already bound to a vanilla action, this combination will not be accepted and the player will have to reassign some other key.
 - Loading a save without some of the mods that registered hotkeys will clear their slots and key bindings, so the player will have to reassign them when they reload with those mods again.
 - The keybindings in X4 are not saved in the save file, but stored per "profile". Please note that the keybindings created for one game will be "replicated" to any other save using the same profile.
 

@@ -304,6 +304,62 @@ local function ClearAllUnboundSlots()
 	debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
+-- Vanilla's own remapInputInternal (gameoptions.xpl) always calls
+-- menu.fixInputConflicts(newinput) with no checkall=true - it only clears a
+-- conflicting binding found in the page being remapped on (menu.controlsorder),
+-- the same page/checkall scoping gap as menu.checkForConflicts. So when a
+-- cross-page conflict is shown on our own Hotkey Bindings page and the player
+-- confirms "apply anyway", the original binding elsewhere is never actually
+-- cleared - both controls end up bound to the same key. Rather than patch
+-- gameoptions.xpl, we self-heal here instead, strictly: if a key bound to one
+-- of our slots is still also bound to any other action by the time this page
+-- next renders (which happens immediately after every remap, via
+-- remapInputInternal's own trailing menu.submenuHandler(menu.currentOption)
+-- call), we drop OUR OWN binding rather than leave a live duplicate - the
+-- original assignment is left exactly as it was, the player just doesn't get
+-- to keep that key on our side.
+local function ResolveDuplicateBindings()
+  local duplicatesFound = false
+  local ok, actions = pcall(GetInputActionMap)
+  if not ok or (type(actions) ~= "table") then
+    return duplicatesFound
+  end
+
+  for _, slot in ipairs(POOL) do
+    if boundHotkeys[slot] then
+      local numericId = POOL_NUMERIC_IDS[slot]
+      local inputs = actions[numericId]
+      if type(inputs) == "table" then
+        local duplicate = false
+        for _, input in ipairs(inputs) do
+          for otherNumericId, otherInputs in pairs(actions) do
+            if (otherNumericId ~= numericId) and (type(otherInputs) == "table") then
+              for _, otherInput in ipairs(otherInputs) do
+                if (otherInput[1] == input[1]) and (otherInput[2] == input[2]) and ((otherInput[3] or 0) == (input[3] or 0)) then
+                  duplicate = true
+                  break
+                end
+              end
+            end
+            if duplicate then
+              break
+            end
+          end
+          if duplicate then
+            break
+          end
+        end
+        if duplicate then
+          debugLog("ResolveDuplicateBindings: slot %s's key is still also bound elsewhere - clearing our own side", slot)
+          ClearSlotBinding(slot)
+          duplicatesFound = true
+        end
+      end
+    end
+  end
+  return duplicatesFound
+end
+
 -- Minimum request.version each area token requires - not just a flat
 -- valid/invalid set, so a future version can introduce a new area value
 -- without retroactively making it usable by a request that explicitly
@@ -688,6 +744,16 @@ local FUNCTION_KEY_BASE = 100000
 function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config)
   if optionParameter ~= CONTROLS_PAGE_ID then
     return controlsorder
+  end
+
+  -- Runs on every render of this page, including the one immediately after
+  -- a remap (remapInputInternal's own trailing submenuHandler call) - see
+  -- ResolveDuplicateBindings' own comment for why this is needed here.
+  if ResolveDuplicateBindings() then
+    debugLog("OnDisplayControlsOrder: resolved duplicate bindings - refreshing controlsorder")
+    if optionsMenu and optionsMenu.refresh then
+      optionsMenu.refresh()
+    end
   end
 
   local groupRow = {
