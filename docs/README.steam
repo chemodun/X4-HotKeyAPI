@@ -1,6 +1,6 @@
 [h1]Hotkey API[/h1]
 
-An API mod for X4: Foundations that lets other mods register custom hotkey actions - bindable by the player through the native Options > Controls keybinding UI, with no external process and no dependency on [i]SirNukes Mod Support APIs[/i]' own Hotkey API.
+An API mod for X4: Foundations that lets other mods register custom hotkey actions - bindable by the player through the native game keybinding UI, with no external process and no dependency on [i]SirNukes Mod Support APIs[/i]' own Hotkey API.
 
 [h2][b]Overview[/b][/h2]
 
@@ -13,7 +13,7 @@ Two integration paths exist, both calling into the same registration/dispatch co
 [*] [b]MD API[/b] - for Mission Director scripts. Uses [b]Register_Action[/b] / [b]Reloaded[/b] cue signals; the registered callback is an MD cue.
 [*] [b]Lua API[/b] - for Lua UI scripts. Call [b]HotkeyApi.RegisterAction(...)[/b] directly; the registered callback is a Lua function, invoked with no MD/blackboard round trip at all.
 [/list]
-A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares an [b]area[/b] ([b]'map'[/b] / [b]'pilot'[/b] / [b]'any'[/b]) describing where it's allowed to fire and what "selected object" means for it, and an optional [b]isObjectRequired[/b] flag to skip firing when there's nothing selected/targeted.
+A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares a mandatory [b]area[/b] ([b]'map'[/b] and/or [b]'pilot'[/b], [b];[/b]-separated if both) describing where it's allowed to fire and what "selected object" means for it, and an optional [b]isObjectRequired[/b] flag to skip firing when there's nothing selected/targeted.
 
 [h2][b]Requirements[/b][/h2]
 [list]
@@ -73,7 +73,7 @@ It contains:
 [list]
 [*] [b]$id[/b] [i](string)[/i] - unique identifier of this action, chosen by your mod. The same id always maps to the same physical hotkey slot once assigned.
 [*] [b]$version[/b] [i](number, optional, default [b]1[/b])[/i] - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
-[*] [b]$area[/b] [i](string, optional, default [b]'any'[/b])[/i] - one of [b]'map'[/b] / [b]'pilot'[/b] / [b]'any'[/b] - where the action is allowed to fire and what "selected object" means for [b]$isObjectRequired[/b]. [b]'pilot'[/b] means the player is piloting a ship (no menu open). [b]'any'[/b] means "map or pilot, whichever is current" - it does [b]not[/b] mean "fires anywhere": the hotkey never fires while the detected area is [b]'other'[/b] (some other menu open, or no clear context), regardless of this setting.
+[*] [b]$area[/b] [i](string, mandatory, no default)[/i] - [b]'map'[/b] and/or [b]'pilot'[/b], separated by [b];[/b] if both (e.g. [b]'map;pilot'[/b]) - where the action is allowed to fire and what "selected object" means for [b]$isObjectRequired[/b]. [b]'pilot'[/b] means the player is piloting a ship (no menu open). Each area value has its own minimum supported [b]$version[/b] (currently both [b]'map'[/b] and [b]'pilot'[/b] are available from version [b]1[/b]) - a future area value added in a later version is only honored for a request that itself declares at least that version.
 [*] [b]$isObjectRequired[/b] [i](bool, optional, default [b]false[/b])[/i] - if [b]true[/b], the action is skipped unless a map selection ([b]'map'[/b]) or ship target ([b]'pilot'[/b]) is currently present.
 [*] [b]$name[/b] [i](string)[/i] - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
 [*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives [b]param = table[$id = id][/b], plus [b]$object[/b] (an MD component reference) if a selection/target was present.
@@ -94,7 +94,7 @@ A shared library, [b]include_actions ref="md.HotkeyApi.GetDebugChance"[/b], comp
       cue="md.HotkeyApi.Register_Action"
       param="table[
         $id               = 'my_mod_my_action',
-        $area             = 'any',
+        $area             = 'map;pilot',
         $isObjectRequired = false,
         $name             = 'My Action',
         $actionCue        = My_Action_Cue,
@@ -136,7 +136,7 @@ Either or both of [b]actionCue[/b] and [b]actionLua[/b] may be set on the same r
 RegisterEvent("HotkeyApi.Register_Request", function()
   HotkeyApi.RegisterAction({
     id = "my_mod_my_action",
-    area = "any",
+    area = "map;pilot",
     isObjectRequired = false,
     name = "My Lua Action",
     actionLua = function(params)
