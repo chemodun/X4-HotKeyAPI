@@ -119,15 +119,23 @@
           build's supported version is rejected outright (not silently
           misinterpreted), so a future incompatible contract change is safe
           to ship without breaking older consumers using the old shape.
-      * area = 'any'
-        - String, one of 'map' / 'pilot' / 'any' - where the action is allowed
-          to fire and what "selected object" means for isObjectRequired.
-          'pilot' means the player is piloting a ship (no menu open).
-          'any' means "map or pilot, whichever is current" - it does NOT
-          mean "fires anywhere": the hotkey never fires while the detected
-          area is 'other' (some other menu open, or no clear context),
-          regardless of this setting, since there is no selected-object
-          notion there for isObjectRequired to fall back on.
+      * area
+        - String, MANDATORY - no default. One or both of 'map' / 'pilot',
+          separated by ';' if both (e.g. 'map;pilot') - where the action is
+          allowed to fire and what "selected object" means for
+          isObjectRequired. 'pilot' means the player is piloting a ship (no
+          menu open). There is no 'any' value: list every area this action
+          should fire in. The hotkey never fires while the detected area is
+          'other' (some other menu open, or no clear context) regardless of
+          this setting, since there is no selected-object notion there for
+          isObjectRequired to fall back on - so 'other' is not a valid value
+          to request either.
+        - Each area value has its own minimum supported $version (currently
+          both 'map' and 'pilot' are available from version 1 - any area
+          value introduced in a later version will only be accepted from a
+          request that itself declares at least that version, even once
+          this build supports it, so an older request keeps exactly the
+          semantics it was written against).
       * isObjectRequired = false
         - Boolean. If true, the action is skipped (with a fail-sound) unless a
           map selection ('map') or ship target ('pilot') is currently present.
@@ -154,7 +162,7 @@
               cue="md.HotkeyApi.Register_Action"
               param="table[
                 $id               = 'my_mod_my_action',
-                $area             = 'any',
+                $area             = 'map;pilot',
                 $isObjectRequired = false,
                 $name             = 'My Action',
                 $actionCue        = My_Action_Cue,

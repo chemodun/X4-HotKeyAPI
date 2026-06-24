@@ -304,6 +304,116 @@ local function ClearAllUnboundSlots()
 	debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
+-- Minimum request.version each area token requires - not just a flat
+-- valid/invalid set, so a future version can introduce a new area value
+-- without retroactively making it usable by a request that explicitly
+-- declared an older version. "other" is deliberately never listed here:
+-- there is no selected-object notion there for isObjectRequired to fall
+-- back on, so onHotKey always blocks dispatch while currentArea == "other"
+-- regardless of what a record's area set contains, and it is never a valid
+-- value to request either.
+local AREA_MIN_VERSION = {
+  map = 1,
+  pilot = 1,
+}
+
+-- Parses request.area ("map", "pilot", or "map;pilot" in either order) into
+-- a set table ({map=true, pilot=true, ...}) for an O(1) lookup at dispatch
+-- time in onHotKey, instead of string comparisons. requestVersion gates
+-- which tokens are accepted (AREA_MIN_VERSION[token] <= requestVersion) -
+-- a request that explicitly declares an older version only ever sees the
+-- areas that existed at that version, even if this build now supports
+-- newer ones too. Returns nil (invalid) for anything not a non-empty
+-- string of only recognised, version-eligible, ";"-separated tokens - area
+-- is mandatory, there is no default to fall back on.
+local function ParseAreas(areaString, requestVersion)
+  if type(areaString) ~= "string" then
+    return nil
+  end
+  local areas = {}
+  for token in areaString:gmatch("[^;]+") do
+    token = token:match("^%s*(.-)%s*$")
+    local minVersion = AREA_MIN_VERSION[token]
+    if (not minVersion) or (requestVersion < minVersion) then
+      return nil
+    end
+    areas[token] = true
+  end
+  if not next(areas) then
+    return nil
+  end
+  return areas
+end
+
+-- For debugLog only - turns an area set back into a readable "map;pilot"
+-- string (sorted, so the order is stable across calls).
+local function AreaSetToString(areaSet)
+  if type(areaSet) ~= "table" then
+    return tostring(areaSet)
+  end
+  local parts = {}
+  for area in pairs(areaSet) do
+    table.insert(parts, area)
+  end
+  table.sort(parts)
+  return table.concat(parts, ";")
+end
+
+-- Validates and fully normalizes a raw registration request before
+-- anything is recorded anywhere (allRequests/boundHotkeys/etc.) - every
+-- field is checked here, up front; ProcessRegistration below never reads
+-- the raw `request` table again once this succeeds, only the returned,
+-- known-good copy. Returns (normalized) on success, or (nil, reason) on
+-- failure.
+local function ValidateRequest(request)
+  if type(request) ~= "table" then
+    return nil, "request is not a table"
+  end
+  if (type(request.id) ~= "string") or (request.id == "") then
+    return nil, "id is missing or not a non-empty string"
+  end
+
+  local version = tonumber(request.version) or 1
+  if (version < 1) or (version ~= math.floor(version)) then
+    return nil, "version must be a positive integer"
+  end
+  if version > API_VERSION then
+    return nil, string.format("version %d is newer than supported %d", version, API_VERSION)
+  end
+
+  local areas = ParseAreas(request.area, version)
+  if not areas then
+    return nil, string.format("area '%s' is missing/invalid for version %d (must be 'map' and/or 'pilot', separated by ';' if both)", tostring(request.area), version)
+  end
+
+  local isObjectRequired = request.isObjectRequired
+  local isObjectRequiredValid = (isObjectRequired == nil) or (isObjectRequired == true) or (isObjectRequired == false)
+    or (isObjectRequired == 0) or (isObjectRequired == 1)
+  if not isObjectRequiredValid then
+    return nil, "isObjectRequired must be a boolean (or MD's 1/0) if provided"
+  end
+
+  if (request.name ~= nil) and (type(request.name) ~= "string") then
+    return nil, "name must be a string if provided"
+  end
+
+  if (request.actionCue ~= nil) and (request.actionLua ~= nil) then
+    return nil, "actionCue and actionLua are mutually exclusive - provide only one"
+  end
+
+  return {
+    id = request.id,
+    version = version,
+    areas = areas,
+    -- Normalized to a real boolean once, here, instead of every dispatch -
+    -- accepts MD's 1/0 marshalling or a real Lua boolean either way.
+    isObjectRequired = (isObjectRequired == true) or (isObjectRequired == 1),
+    name = request.name or request.id,
+    actionCue = request.actionCue,
+    actionLua = request.actionLua,
+  }
+end
+
 -- Shared by both registration entry points (MD's Register_Action, via
 -- OnRegisterAction/GetNextRequest below, and the direct-Lua HotkeyApi.
 -- RegisterAction global) - everything from here on is source-agnostic.
@@ -311,57 +421,56 @@ end
 -- same shape either path supplies it in.
 local function ProcessRegistration(request)
   debugLog("ProcessRegistration received, id: %s", (request and request.id) or "nil")
-  if (type(request) ~= "table") or (type(request.id) ~= "string") then
-    debugLog("ProcessRegistration received an invalid request")
+
+  local normalized, reason = ValidateRequest(request)
+  if not normalized then
+    debugLog("ProcessRegistration: invalid request (%s) - rejecting", tostring(reason))
     return
   end
 
-  local version = tonumber(request.version) or 1
-  if version > API_VERSION then
-    debugLog("ProcessRegistration: id '%s' requests version %s, newer than supported %d - rejecting", request.id, tostring(version), API_VERSION)
-    return
-  end
+  -- From here on, only `normalized` is used - never the raw `request` -
+  -- so nothing partially-invalid can leak into allRequests/boundHotkeys.
 
   -- Tracked for the requests-management page regardless of slot/block
   -- status - this is the only place that knows about every id a consumer
   -- ever tries to register, bound or not.
-  allRequests[request.id] = request.name or request.id
+  allRequests[normalized.id] = normalized.name
 
-  if blockedIds[request.id] then
+  if blockedIds[normalized.id] then
     -- Deliberately disabled by the player. Defensively free+clear any slot
     -- it might still hold (shouldn't normally happen - blocking already does
     -- this - but guards against any path that skipped that step).
-    local boundSlot = FindSlotById(request.id)
+    local boundSlot = FindSlotById(normalized.id)
     if boundSlot then
       boundHotkeys[boundSlot] = nil
       SaveBoundHotkeys()
       ClearSlotBinding(boundSlot)
     end
-    debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", request.id)
+    debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", normalized.id)
     return
   end
 
-  local slot = FindSlotById(request.id)
+  local slot = FindSlotById(normalized.id)
   if not slot then
     slot = FindFreeSlot()
     if not slot then
-      debugLog("no free slot left for id '" .. request.id .. "' - pool exhausted")
+      debugLog("no free slot left for id '" .. normalized.id .. "' - pool exhausted")
       return
     end
-    debugLog("ProcessRegistration: claimed new slot %s for id '%s'", slot, request.id)
+    debugLog("ProcessRegistration: claimed new slot %s for id '%s'", slot, normalized.id)
     ClearSlotBinding(slot)
   else
-    debugLog("ProcessRegistration: reusing existing slot %s for id '%s'", slot, request.id)
+    debugLog("ProcessRegistration: reusing existing slot %s for id '%s'", slot, normalized.id)
   end
 
   boundHotkeys[slot] = {
-    id = request.id,
-    area = request.area or "any",
-    isObjectRequired = request.isObjectRequired or false,
-    name = request.name or request.id,
-    actionCue = request.actionCue,
-    actionLua = request.actionLua,
-    version = version,
+    id = normalized.id,
+    area = normalized.areas,
+    isObjectRequired = normalized.isObjectRequired,
+    name = normalized.name,
+    actionCue = normalized.actionCue,
+    actionLua = normalized.actionLua,
+    version = normalized.version,
     confirmed = true,
   }
   SaveBoundHotkeys()
@@ -501,10 +610,10 @@ function hotkeyApi.onHotKey(action)
 
   local currentArea = detectCurrentArea()
   debugLog("onHotKey: action %s fired for id '%s' (area=%s, isObjectRequired=%s, currentArea=%s)",
-    action, tostring(record.id), tostring(record.area), tostring(record.isObjectRequired), tostring(currentArea))
+    action, tostring(record.id), AreaSetToString(record.area), tostring(record.isObjectRequired), tostring(currentArea))
 
-  if currentArea == "other" or record.area ~= "any" and record.area ~= currentArea then
-    debugLog("onHotKey: area mismatch (record.area=%s, currentArea=%s) - skipping", tostring(record.area), tostring(currentArea))
+  if (currentArea == "other") or (not record.area[currentArea]) then
+    debugLog("onHotKey: area mismatch (record.area=%s, currentArea=%s) - skipping", AreaSetToString(record.area), tostring(currentArea))
     -- PlaySound("ui_target_set_fail")
     return
   end
@@ -517,10 +626,10 @@ function hotkeyApi.onHotKey(action)
   if version == 1 then
 
     local selected = GetSelectedObjectForArea(currentArea)
-    -- MD marshals booleans as 1/0 (per Interact_Menu_API's own documented
-    -- convention); a direct-Lua registration (HotkeyApi.RegisterAction)
-    -- supplies a real Lua boolean instead - accept either.
-    local isObjectRequired = (record.isObjectRequired == 1) or (record.isObjectRequired == true)
+    -- Normalized to a real boolean by ValidateRequest at registration time
+    -- (accepts MD's 1/0 or a real Lua boolean either way) - no need to
+    -- re-check both forms on every single dispatch.
+    local isObjectRequired = record.isObjectRequired
 
     if isObjectRequired and not selected then
       debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
