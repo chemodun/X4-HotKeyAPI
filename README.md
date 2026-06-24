@@ -45,6 +45,8 @@ It contains:
 
   ![Remap warning](docs/images/warning.png)
 
+  ![Hard Remap Warning](docs/images/hard_warning.png)
+
 - **Hotkey Requests** - lists every id any mod has tried to register this session, regardless of whether it currently holds a slot, with a checkbox per row:
 
   ![Hotkey Requests](docs/images/hotkey_requests.png)
