@@ -168,10 +168,12 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Changelog
 
-### [8.00.02] - 2026-06-28
+### [8.00.03] - 2026-06-28
 
 - **Improved**
   - Hotkey management
+- **Fixed**
+  - Steam dependencies
 
 ### [8.00.01] - 2026-06-23
 
