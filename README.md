@@ -168,6 +168,11 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Changelog
 
+### [8.00.02] - 2026-06-28
+
+- **Improved**
+  - Hotkey management
+
 ### [8.00.01] - 2026-06-23
 
 - **Added**
