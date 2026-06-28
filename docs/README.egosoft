@@ -174,11 +174,15 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [size=130][u]Changelog[/u][/size]
 
-[size=125][u][8.00.02] - 2026-06-28[/u][/size]
+[size=125][u][8.00.03] - 2026-06-28[/u][/size]
 [list]
 [*] [b]Improved[/b]
 [list]
 [*] Hotkey management
+[/list]
+[*] [b]Fixed[/b]
+[list]
+[*] Steam dependencies
 [/list]
 [/list]
 [size=125][u][8.00.01] - 2026-06-23[/u][/size]
