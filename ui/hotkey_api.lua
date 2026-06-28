@@ -77,6 +77,7 @@ end
 
 local BLACKBOARD_BOUND = "$hotkey_api_bound"
 local BLACKBOARD_SELECTED = "$hotkey_api_selected"
+local BLACKBOARD_ACTION_CUE = "$hotkey_api_action_cue"
 local BLACKBOARD_REQUESTS = "$hotkey_api_requests"
 local BLACKBOARD_BLOCKED = "$hotkey_api_blocked"
 -- Same name MD's debug_text calls check directly (player.entity.$hotkey_api_debug_enabled)
@@ -91,11 +92,25 @@ local optionsMenu = nil
 local playerId = nil
 
 -- boundHotkeys: keyed by slot (a POOL action-id string) ->
--- {id, area, isObjectRequired, name, actionCue, actionLua}. This is the one
--- registry - mirrored verbatim to the player blackboard var so it survives
--- Lua's own reload (slot assignments are sticky; area/name/actionCue/
--- actionLua get refreshed by re-registration after every Reloaded).
+-- {id, area, isObjectRequired, name, actionCue, actionLua, version, confirmed}.
+-- The live, in-memory-only dispatch registry, rebuilt fresh from scratch by
+-- registrations every reload - never persisted itself (actionLua is a real
+-- Lua function value, which can't be written to the blackboard in any shape,
+-- and actionCue/area/etc. don't need to survive a reload anyway, since every
+-- consumer is required to re-send its registration every time Reloaded
+-- fires). onHotKey and the UI pages read this for the *current* session's
+-- dispatch/display data only.
 local boundHotkeys = {}
+
+-- usedSlots: keyed by slot -> {id, confirmed}. The only thing that actually
+-- needs to survive a Lua reload - which slot is durably claimed by which id,
+-- so a re-registering consumer reclaims the *same* physical slot (and thus
+-- the player's existing key binding for it) instead of a different one.
+-- Persisted as a flat list of {slot=.., id=..} pairs (see SaveUsedSlots) -
+-- deliberately minimal, since everything else in a record is re-supplied
+-- fresh by re-registration anyway and doesn't need to round-trip the
+-- blackboard at all.
+local usedSlots = {}
 
 -- blockedIds: keyed by request id -> true. Persisted (the player's decision
 -- to block an id must survive reload/restart) - ids in here are skipped by
@@ -103,13 +118,21 @@ local boundHotkeys = {}
 -- other ids. Managed entirely from the "Hotkey Requests" management page.
 local blockedIds = {}
 
--- allRequests: keyed by request id -> display name, for every id seen via
+-- allRequests: flat list of every id seen via Register_Action this session,
+-- whether or not it currently holds a slot (unlike boundHotkeys, which only
+-- knows about ids that got one). Session-only by design - cleared and
+-- rebuilt from scratch every time the Reloaded broadcast goes out, so a
+-- consumer that stops registering disappears from the management page after
+
+local allRequests = {}
+
+-- allRequestNames: keyed by request id -> display name, for every id seen via
 -- Register_Action this session, whether or not it currently holds a slot
 -- (unlike boundHotkeys, which only knows about ids that got one). Session-
 -- only by design - cleared and rebuilt from scratch every time the Reloaded
 -- broadcast goes out, so a consumer that stops registering disappears from
 -- the management page after the next refresh instead of lingering forever.
-local allRequests = {}
+local allRequestNames = {}
 
 -- Current page (1-based) of the requests-management table; reset whenever
 -- the page is (re)opened so a stale page index from a previous, longer list
@@ -124,29 +147,51 @@ local requestsPage = 1
 -- filling it again).
 local pendingRequests = {}
 
-local function SaveBoundHotkeys()
-  SetNPCBlackboard(playerId, BLACKBOARD_BOUND, boundHotkeys)
+-- Saved as a flat *list* of {slot=.., id=..} pairs, not a map keyed by slot
+-- name strings - SetNPCBlackboard converts Lua table keys into MD member
+-- names, so a map keyed by e.g. "INPUT_ACTION_DEBUG_C" would try to create a
+-- "$INPUT_ACTION_DEBUG_C" member, and any non-primitive value under that key
+-- (a nested table, a function) can fail the conversion - breaking the whole
+-- call, not just that one entry. A list of small flat {slot, id} tables (only
+-- strings) avoids that entirely.
+local function SaveUsedSlots()
+  local list = {}
+  for slot, used in pairs(usedSlots) do
+    table.insert(list, { slot = slot, id = used.id })
+  end
+  SetNPCBlackboard(playerId, BLACKBOARD_BOUND, list)
 end
 
-local function LoadBoundHotkeys()
+local function LoadUsedSlots()
   local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BOUND)
   if ok and (type(stored) == "table") then
-    boundHotkeys = stored
-    debugLog("LoadBoundHotkeys: restored %d bound slot(s) from blackboard", select("#", next(stored) and 1 or 0))
-    for slot, record in pairs(boundHotkeys) do
-      record.confirmed = false
+    for _, entry in ipairs(stored) do
+      if (type(entry) == "table") and (type(entry.slot) == "string") and (type(entry.id) == "string") then
+        -- confirmed=false until a fresh registration re-claims it this
+        -- session - mirrors the previous boundHotkeys-based Clearance flow.
+        usedSlots[entry.slot] = { id = entry.id, confirmed = false }
+      end
     end
+    debugLog("LoadUsedSlots: restored %d slot/id association(s) from blackboard", #stored)
   end
 end
 
 local function SaveBlockedIds()
-  SetNPCBlackboard(playerId, BLACKBOARD_BLOCKED, blockedIds)
+  local listOfBlockedIds = {}
+  for id in pairs(blockedIds) do
+    table.insert(listOfBlockedIds, id)
+  end
+  SetNPCBlackboard(playerId, BLACKBOARD_BLOCKED, listOfBlockedIds)
 end
 
 local function LoadBlockedIds()
   local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BLOCKED)
   if ok and (type(stored) == "table") then
-    blockedIds = stored
+    for _, id in ipairs(stored) do
+      if type(id) == "string" then
+        blockedIds[id] = true
+      end
+    end
     debugLog("LoadBlockedIds: restored blocked id list from blackboard")
   end
 end
@@ -178,8 +223,8 @@ local function GetNextRequest()
 end
 
 local function FindSlotById(id)
-  for slot, record in pairs(boundHotkeys) do
-    if record.id == id then
+  for slot, used in pairs(usedSlots) do
+    if used.id == id then
       return slot
     end
   end
@@ -188,7 +233,7 @@ end
 
 local function FindFreeSlot()
   for _, slot in ipairs(POOL) do
-    if not boundHotkeys[slot] then
+    if not usedSlots[slot] then
       return slot
     end
   end
@@ -245,19 +290,6 @@ local function GetAssignedKeyText(slot)
   return table.concat(names, " / ")
 end
 
--- All ids seen this session, alphabetically by display name - the order the
--- requests-management page lists them in.
-local function GetSortedRequestIds()
-  local ids = {}
-  for id in pairs(allRequests) do
-    table.insert(ids, id)
-  end
-  table.sort(ids, function(a, b)
-    return (allRequests[a] or a) < (allRequests[b] or b)
-  end)
-  return ids
-end
-
 -- Clears any key currently bound to this slot's numeric action id (e.g. a
 -- leftover from previous testing/an earlier mod that used this same pool
 -- slot), so a freshly claimed slot starts genuinely unbound and the player
@@ -290,13 +322,14 @@ end
 -- Sweeps the entire pool (in order, checking every slot individually - a
 -- free slot can be in the middle of otherwise-bound ones, e.g. after a mod
 -- that used to register an id stops doing so) and clears the key binding of
--- every slot NOT currently claimed in boundHotkeys. Run once at startup,
--- before notifying md, so unclaimed slots never carry a leftover binding
--- into a fresh session regardless of whether anything ever claims them.
+-- every slot NOT currently claimed in usedSlots (just restored from the
+-- blackboard by LoadUsedSlots). Run once at startup, before notifying md, so
+-- unclaimed slots never carry a leftover binding into a fresh session
+-- regardless of whether anything ever claims them.
 local function ClearAllUnboundSlots()
 	local clearedCount = 0
 	for _, slot in ipairs(POOL) do
-		if not boundHotkeys[slot] then
+		if not usedSlots[slot] then
 			clearedCount = clearedCount + 1
 			ClearSlotBinding(slot)
 		end
@@ -326,7 +359,7 @@ local function ResolveDuplicateBindings()
   end
 
   for _, slot in ipairs(POOL) do
-    if boundHotkeys[slot] then
+    if usedSlots[slot] then
       local numericId = POOL_NUMERIC_IDS[slot]
       local inputs = actions[numericId]
       if type(inputs) == "table" then
@@ -490,7 +523,8 @@ local function ProcessRegistration(request)
   -- Tracked for the requests-management page regardless of slot/block
   -- status - this is the only place that knows about every id a consumer
   -- ever tries to register, bound or not.
-  allRequests[normalized.id] = normalized.name
+  allRequestNames[normalized.id] = normalized.name
+  allRequests[#allRequests + 1] = normalized.id
 
   if blockedIds[normalized.id] then
     -- Deliberately disabled by the player. Defensively free+clear any slot
@@ -499,7 +533,8 @@ local function ProcessRegistration(request)
     local boundSlot = FindSlotById(normalized.id)
     if boundSlot then
       boundHotkeys[boundSlot] = nil
-      SaveBoundHotkeys()
+      usedSlots[boundSlot] = nil
+      SaveUsedSlots()
       ClearSlotBinding(boundSlot)
     end
     debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", normalized.id)
@@ -529,7 +564,8 @@ local function ProcessRegistration(request)
     version = normalized.version,
     confirmed = true,
   }
-  SaveBoundHotkeys()
+  usedSlots[slot] = { id = normalized.id, confirmed = true }
+  SaveUsedSlots()
 
   if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
@@ -584,16 +620,17 @@ function HotkeyApi.RegisterAction(request)
 end
 
 
-function hotkeyApi.OnClearance()
-  debugLog("Clearance: clearing not confirmed (stale) bound slots")
-  for slot, record in pairs(boundHotkeys) do
-    if not record.confirmed then
-      debugLog("Clearance: slot %s for id '%s' was not confirmed - clearing", slot, tostring(record.id))
+function hotkeyApi.ClearUnconfirmed()
+  debugLog("Clearance: clearing not confirmed (stale) used slots")
+  for slot, used in pairs(usedSlots) do
+    if not used.confirmed then
+      debugLog("Clearance: slot %s for id '%s' was not confirmed - clearing", slot, tostring(used.id))
       ClearSlotBinding(slot)
+      usedSlots[slot] = nil
       boundHotkeys[slot] = nil
     end
   end
-  SaveBoundHotkeys()
+  SaveUsedSlots()
 end
 
 -- More precise than just "no menu is shown" - that would also be true while
@@ -714,7 +751,8 @@ function hotkeyApi.onHotKey(action)
       else
         SetNPCBlackboard(playerId, BLACKBOARD_SELECTED, nil)
       end
-      AddUITriggeredEvent("HotkeyApi", "execute_action", action)
+      SetNPCBlackboard(playerId, BLACKBOARD_ACTION_CUE, record.actionCue)
+      AddUITriggeredEvent("HotkeyApi", "execute_action", record.id)
       debugLog("onHotKey: dispatched execute_action (MD) for id '%s' (slot %s)", tostring(record.id), action)
       return
     end
@@ -842,6 +880,7 @@ function hotkeyApi.OnDisplayOptions(options, config)
   -- valuetype, only the custom-rendered pages (e.g. Hotkey Requests) can use
   -- actual createCheckBox widgets.
   if config and config.optionDefinitions and (not config.optionDefinitions[MANAGEMENT_PAGE_ID]) then
+    hotkeyApi.ClearUnconfirmed()
     config.optionDefinitions[MANAGEMENT_PAGE_ID] = {
       name = function() return ReadText(PAGE_ID, 1000) end,
       [1] = {
@@ -902,7 +941,8 @@ function hotkeyApi.OnToggleRequestEnabled(id, checked)
     local slot = FindSlotById(id)
     if slot then
       boundHotkeys[slot] = nil
-      SaveBoundHotkeys()
+      usedSlots[slot] = nil
+      SaveUsedSlots()
       ClearSlotBinding(slot)
       debugLog("OnToggleRequestEnabled: blocked id '%s', freed slot %s", id, slot)
     else
@@ -910,7 +950,7 @@ function hotkeyApi.OnToggleRequestEnabled(id, checked)
     end
   end
   SaveBlockedIds()
-
+  hotkeyApi.ClearUnconfirmed()
   if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
     optionsMenu.refresh()
   end
@@ -937,6 +977,7 @@ end
 -- giving newly-unblocked ids a chance to claim a slot via the normal
 -- registration path.
 local function BroadcastReloaded()
+  allRequestNames = {}
   allRequests = {}
   AddUITriggeredEvent("HotkeyApi", "reloaded")
   debugLog("BroadcastReloaded: cleared allRequests and raised HotkeyApi/reloaded")
@@ -967,6 +1008,7 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   if optionParameter ~= REQUESTS_PAGE_ID then
     return false
   end
+  hotkeyApi.ClearUnconfirmed()
 
   Helper.clearDataForRefresh(optionsMenu, config.optionsLayer)
   optionsMenu.selectedOption = nil
@@ -984,14 +1026,13 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   local contentBudget = optionsMenu.table.height - footerHeight
   local rowsPerPage = math.max(1, math.floor((contentBudget - rowHeight) / rowHeight))
 
-  local sortedIds = GetSortedRequestIds()
-  local totalPages = math.max(1, math.ceil(#sortedIds / rowsPerPage))
+  local totalPages = math.max(1, math.ceil(#allRequests / rowsPerPage))
   if requestsPage > totalPages then
     requestsPage = totalPages
   end
   local hasFreeSlot = HasFreeSlot()
   debugLog("DisplayRequestsManagement: %d request(s), %d row(s)/page, page %d/%d, hasFreeSlot=%s",
-    #sortedIds, rowsPerPage, requestsPage, totalPages, tostring(hasFreeSlot))
+    #allRequests, rowsPerPage, requestsPage, totalPages, tostring(hasFreeSlot))
 
   local ftable = frame:addTable(4, { tabOrder = 1, x = optionsMenu.table.x, y = optionsMenu.table.y, width = optionsMenu.table.width, maxVisibleHeight = contentBudget })
   ftable:setColWidth(1, optionsMenu.table.arrowColumnWidth, false)
@@ -1014,10 +1055,10 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   columnHeaderRow[4]:createText(ReadText(PAGE_ID, 1230), config.subHeaderTextProperties)
 
   local startIdx = (requestsPage - 1) * rowsPerPage + 1
-  local endIdx = math.min(startIdx + rowsPerPage - 1, #sortedIds)
+  local endIdx = math.min(startIdx + rowsPerPage - 1, #allRequests)
   for i = startIdx, endIdx do
-    local id = sortedIds[i]
-    local name = allRequests[id] or id
+    local id = allRequests[i]
+    local name = allRequestNames[id] or id
     local status = GetRequestStatus(id)
     local checked = not blockedIds[id]
     local checkboxActive = checked or hasFreeSlot
@@ -1067,7 +1108,7 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
 
   frame:display()
 
-  debugLog("DisplayRequestsManagement: rendered page %d/%d (%d row(s)/page, %d total request(s))", requestsPage, totalPages, rowsPerPage, #sortedIds)
+  debugLog("DisplayRequestsManagement: rendered page %d/%d (%d row(s)/page, %d total request(s))", requestsPage, totalPages, rowsPerPage, #allRequests)
 
   return true
 end
@@ -1083,7 +1124,7 @@ local function Init()
   SaveDebugEnabled()
   debugLog("Initializing Native Hotkey API.")
 
-  LoadBoundHotkeys()
+  LoadUsedSlots()
   LoadBlockedIds()
 
   mapMenu = Helper.getMenu("MapMenu")
@@ -1125,9 +1166,6 @@ local function Init()
 
   RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
   debugLog("Init: RegisterEvent(HotkeyApi.Register_Action, ...) registered")
-
-  RegisterEvent("HotkeyApi.Clearance", hotkeyApi.OnClearance)
-  debugLog("Init: RegisterEvent(HotkeyApi.Clearance, ...) registered")
 
   -- Clean up before anyone re-registers: any pool slot not already claimed
   -- (per the blackboard state just loaded above) gets its key binding

@@ -100,7 +100,6 @@
         <include_actions ref="GetDebugChance" />
         <debug_text text="'Hotkey API: Lua reload event received, signalling Reloaded cue.'" chance="$debugChance" filter="general" />
         <signal_cue_instantly cue="Reloaded" />
-        <signal_objects object="player.entity" param="'HotkeyApi.Clearance'" delay="10s" />
         <raise_lua_event name="'HotkeyApi.Register_Request'" />
       </actions>
     </cue>
@@ -187,21 +186,6 @@
     </cue>
 
     <!--@doc-cue
-      Lua signals that a clearance is requested, to allow the lua-side registry
-      to clean up any stale state before after registrations are processed.
-      -->
-    <cue name="Clearance" instantiate="true" namespace="this">
-      <conditions>
-        <event_object_signalled object="player.entity" param="'HotkeyApi.Clearance'" />
-      </conditions>
-      <actions>
-        <include_actions ref="GetDebugChance" />
-        <debug_text text="'Hotkey API: Clearance initiated'" chance="$debugChance" filter="general" />
-        <raise_lua_event name="'HotkeyApi.Clearance'" />
-      </actions>
-    </cue>
-
-    <!--@doc-cue
       Lua signals that a bound hotkey fired and any target requirement was
       already checked/satisfied. event.param3 is the pool slot id (an
       INPUT_ACTION_DEBUG_* string), used as the key into the same blackboard var
@@ -213,15 +197,14 @@
       </conditions>
       <actions>
         <include_actions ref="GetDebugChance" />
-        <debug_text text="'Hotkey API: Execute_Action cue received, slot: %s'.[event.param3]" chance="$debugChance" filter="general" />
-        <set_value name="$slot" exact="event.param3" />
-        <set_value name="$record" exact="player.entity.$hotkey_api_bound.{'$'+$slot}" />
-        <do_if value="$record? and $record.$actionCue? and $record.$actionCue.exists">
-          <set_value name="$params" exact="table[$id=$record.$id]" />
+        <debug_text text="'Hotkey API: Execute_Action received, id: %s, cue: %s'.[event.param3, @player.entity.$hotkey_api_action_cue.name]" chance="$debugChance" filter="general" />
+        <set_value name="$actionCue" exact="@player.entity.$hotkey_api_action_cue" />
+        <do_if value="$actionCue? and $actionCue.exists">
+          <set_value name="$params" exact="table[$id=event.param3]" />
           <do_if value="@player.entity.$hotkey_api_selected != null">
             <set_value name="$params.$object" exact="player.entity.$hotkey_api_selected" />
           </do_if>
-          <signal_cue_instantly cue="$record.$actionCue" param="$params" />
+          <signal_cue_instantly cue="$actionCue" param="$params" />
         </do_if>
       </actions>
     </cue>
