@@ -35,7 +35,7 @@ local API_VERSION = 1
 -- Must be declared before debugLog() below so debugLog can see it as an
 -- upvalue - default true (matches the always-on behaviour this mod has had
 -- so far) until LoadDebugEnabled() restores the player's actual choice.
-local debugEnabled = true
+local debugEnabled = false
 
 local function debugLog(fmt, ...)
   if not debugEnabled then
@@ -118,16 +118,26 @@ local boundHotkeys = {}
 -- needs to survive a Lua reload - which slot is durably claimed by which id,
 -- so a re-registering consumer reclaims the *same* physical slot (and thus
 -- the player's existing key binding for it) instead of a different one.
--- Persisted as a flat list of {slot=.., id=..} pairs (see SaveUsedSlots) -
--- deliberately minimal, since everything else in a record is re-supplied
--- fresh by re-registration anyway and doesn't need to round-trip the
--- blackboard at all.
-local usedSlots = {}
-
--- blockedIds: keyed by request id -> true. Persisted (the player's decision
--- to block an id must survive reload/restart) - ids in here are skipped by
--- OnRegisterAction's slot-claiming, freeing/keeping their slot free for
+--
+-- blockedIds: keyed by request id -> true. The player's decision to block an
+-- id, which must survive reload/restart too - ids in here are skipped by
+-- ProcessRegistration's slot-claiming, freeing/keeping their slot free for
 -- other ids. Managed entirely from the "Hotkey Requests" management page.
+--
+-- Both live in __NATIVE_HOTKEY_API_DATA (userdata storage - see its own
+-- declaration comment above), not the player blackboard: these are reference
+-- assignments in Init() (MigrateFromBlackboardIfNeeded), so mutating
+-- usedSlots[slot]/blockedIds[id] directly mutates the same persisted tables -
+-- no separate Save call needed, unlike the player blackboard. Blackboard
+-- storage lives *inside* the savegame, while the actual key bindings these
+-- track live at the profile level (same as every other keybinding, never
+-- saved in the savegame at all) - so loading an older save than the one a
+-- hotkey was last bound in would make that hotkey look unclaimed again even
+-- though its key binding never went away, and registering it "fresh" would
+-- wipe that still-live binding. Userdata storage matches the same
+-- profile-level scope the key bindings themselves use, so this can't happen
+-- once migrated.
+local usedSlots = {}
 local blockedIds = {}
 
 -- allRequests: flat list of every id seen via Register_Action this session,
@@ -159,64 +169,56 @@ local requestsPage = 1
 -- filling it again).
 local pendingRequests = {}
 
--- Saved as a flat *list* of {slot=.., id=..} pairs, not a map keyed by slot
--- name strings - SetNPCBlackboard converts Lua table keys into MD member
--- names, so a map keyed by e.g. "INPUT_ACTION_DEBUG_C" would try to create a
--- "$INPUT_ACTION_DEBUG_C" member, and any non-primitive value under that key
--- (a nested table, a function) can fail the conversion - breaking the whole
--- call, not just that one entry. A list of small flat {slot, id} tables (only
--- strings) avoids that entirely.
-local function SaveUsedSlots()
-  local list = {}
-  for slot, used in pairs(usedSlots) do
-    table.insert(list, { slot = slot, id = used.id })
-  end
-  SetNPCBlackboard(playerId, BLACKBOARD_BOUND, list)
-end
-
-local function LoadUsedSlots()
-  local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BOUND)
-  if ok and (type(stored) == "table") then
-    for _, entry in ipairs(stored) do
-      if (type(entry) == "table") and (type(entry.slot) == "string") and (type(entry.id) == "string") then
-        -- confirmed=false until a fresh registration re-claims it this
-        -- session - mirrors the previous boundHotkeys-based Clearance flow.
-        usedSlots[entry.slot] = { id = entry.id, confirmed = false }
+-- One-time migration from the old player-blackboard-based persistence (the
+-- list-of-{slot,id}/list-of-id formats SaveUsedSlots/SaveBlockedIds used to
+-- write) into __NATIVE_HOTKEY_API_DATA. Only runs the blackboard reads while
+-- __NATIVE_HOTKEY_API_DATA.usedSlots/.blockedIds are still nil (i.e. never
+-- migrated on this profile before) - after this, both are real tables
+-- stored directly there, no list-conversion needed at all (a plain Lua
+-- global isn't subject to SetNPCBlackboard's table-key-to-MD-member
+-- conversion), and the blackboard is never read or written again for this
+-- data.
+local function MigrateFromBlackboardIfNeeded()
+  if __NATIVE_HOTKEY_API_DATA.usedSlots == nil then
+    local migrated = {}
+    local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BOUND)
+    if ok and (type(stored) == "table") then
+      for _, entry in ipairs(stored) do
+        if (type(entry) == "table") and (type(entry.slot) == "string") and (type(entry.id) == "string") then
+          -- confirmed=false until a fresh registration re-claims it this
+          -- session - mirrors the previous boundHotkeys-based Clearance flow.
+          migrated[entry.slot] = { id = entry.id, confirmed = false }
+        end
       end
+      debugLog("MigrateFromBlackboardIfNeeded: migrated %d slot/id association(s) from blackboard to userdata", #stored)
     end
-    debugLog("LoadUsedSlots: restored %d slot/id association(s) from blackboard", #stored)
+    __NATIVE_HOTKEY_API_DATA.usedSlots = migrated
   end
-end
 
-local function SaveBlockedIds()
-  local listOfBlockedIds = {}
-  for id in pairs(blockedIds) do
-    table.insert(listOfBlockedIds, id)
-  end
-  SetNPCBlackboard(playerId, BLACKBOARD_BLOCKED, listOfBlockedIds)
-end
-
-local function LoadBlockedIds()
-  local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BLOCKED)
-  if ok and (type(stored) == "table") then
-    for _, id in ipairs(stored) do
-      if type(id) == "string" then
-        blockedIds[id] = true
+  if __NATIVE_HOTKEY_API_DATA.blockedIds == nil then
+    local migrated = {}
+    local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_BLOCKED)
+    if ok and (type(stored) == "table") then
+      for _, id in ipairs(stored) do
+        if type(id) == "string" then
+          migrated[id] = true
+        end
       end
+      debugLog("MigrateFromBlackboardIfNeeded: migrated %d blocked id(s) from blackboard to userdata", #stored)
     end
-    debugLog("LoadBlockedIds: restored blocked id list from blackboard")
+    __NATIVE_HOTKEY_API_DATA.blockedIds = migrated
   end
+
+  -- Reassign the upvalues used everywhere else in this file to point at the
+  -- same persisted tables - every function below that reads/writes
+  -- usedSlots[...]/blockedIds[...] is mutating __NATIVE_HOTKEY_API_DATA's
+  -- own tables from here on, so no explicit save call is ever needed.
+  usedSlots = __NATIVE_HOTKEY_API_DATA.usedSlots
+  blockedIds = __NATIVE_HOTKEY_API_DATA.blockedIds
 end
 
 local function SaveDebugEnabled()
   SetNPCBlackboard(playerId, BLACKBOARD_DEBUG_ENABLED, debugEnabled)
-end
-
-local function LoadDebugEnabled()
-  local ok, stored = pcall(GetNPCBlackboard, playerId, BLACKBOARD_DEBUG_ENABLED)
-  if ok and (type(stored) == "boolean") then
-    debugEnabled = stored
-  end
 end
 
 local function GetNextRequest()
@@ -334,10 +336,11 @@ end
 -- Sweeps the entire pool (in order, checking every slot individually - a
 -- free slot can be in the middle of otherwise-bound ones, e.g. after a mod
 -- that used to register an id stops doing so) and clears the key binding of
--- every slot NOT currently claimed in usedSlots (just restored from the
--- blackboard by LoadUsedSlots). Run once at startup, before notifying md, so
--- unclaimed slots never carry a leftover binding into a fresh session
--- regardless of whether anything ever claims them.
+-- every slot NOT currently claimed in usedSlots (loaded from userdata, or
+-- migrated from the blackboard, by MigrateFromBlackboardIfNeeded). Run once
+-- at startup, before notifying md, so unclaimed slots never carry a leftover
+-- binding into a fresh session regardless of whether anything ever claims
+-- them.
 local function ClearAllUnboundSlots()
   local clearedCount = 0
   for _, slot in ipairs(POOL) do
@@ -548,7 +551,6 @@ local function ProcessRegistration(request)
     if boundSlot then
       boundHotkeys[boundSlot] = nil
       usedSlots[boundSlot] = nil
-      SaveUsedSlots()
       ClearSlotBinding(boundSlot)
     end
     debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", normalized.id)
@@ -579,7 +581,6 @@ local function ProcessRegistration(request)
     confirmed = true,
   }
   usedSlots[slot] = { id = normalized.id, confirmed = true }
-  SaveUsedSlots()
 
   if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
@@ -643,7 +644,6 @@ function hotkeyApi.ClearUnconfirmed()
       boundHotkeys[slot] = nil
     end
   end
-  SaveUsedSlots()
 end
 
 -- More precise than just "no menu is shown" - that would also be true while
@@ -955,14 +955,12 @@ function hotkeyApi.OnToggleRequestEnabled(id, checked)
     if slot then
       boundHotkeys[slot] = nil
       usedSlots[slot] = nil
-      SaveUsedSlots()
       ClearSlotBinding(slot)
       debugLog("OnToggleRequestEnabled: blocked id '%s', freed slot %s", id, slot)
     else
       debugLog("OnToggleRequestEnabled: blocked id '%s' (was not currently bound)", id)
     end
   end
-  SaveBlockedIds()
   hotkeyApi.ClearUnconfirmed()
   if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
     optionsMenu.refresh()
@@ -976,6 +974,7 @@ end
 -- when logging was switched off.
 function hotkeyApi.OnToggleDebugEnabled(checked)
   debugEnabled = checked
+  __NATIVE_HOTKEY_API_DATA.debugEnabled = checked
   SaveDebugEnabled()
   DebugError("Hotkey API: debug logging " .. (checked and "enabled" or "disabled"))
 
@@ -1141,12 +1140,12 @@ local function Init()
   -- blackboard var MD's debug_text calls read is never left unset (which
   -- MD treats as falsy) while Lua's own default is true - keeps both sides
   -- in sync from the very first load, not just after the player toggles it.
-  LoadDebugEnabled()
+  __NATIVE_HOTKEY_API_DATA.debugEnabled = __NATIVE_HOTKEY_API_DATA.debugEnabled or false
+  debugEnabled = __NATIVE_HOTKEY_API_DATA.debugEnabled
   SaveDebugEnabled()
   debugLog("Initializing Native Hotkey API.")
 
-  LoadUsedSlots()
-  LoadBlockedIds()
+  MigrateFromBlackboardIfNeeded()
 
   mapMenu = Helper.getMenu("MapMenu")
   debugLog("Init: MapMenu %s", mapMenu and "found" or "NOT found")
