@@ -6,5 +6,6 @@
         <dependency name="ego_debuglog" />
         <dependency name="kuertee_ui_extensions" />
         <file name="ui/hotkey_api.lua" />
+        <savedvariable name="__NATIVE_HOTKEY_API_DATA" storage="userdata" />
     </environment>
 </addon>

@@ -85,6 +85,18 @@ local BLACKBOARD_BLOCKED = "$hotkey_api_blocked"
 -- both Lua's debugLog() and MD's debug_text in lockstep.
 local BLACKBOARD_DEBUG_ENABLED = "$hotkey_api_debug_enabled"
 
+-- Declared via <savedvariable name="__NATIVE_HOTKEY_API_DATA" storage="userdata" />
+-- in ui.xml - a real global (not local), tied to the player's profile/
+-- installation rather than any one savegame (same storage class keybindings
+-- themselves use), so it survives across new games/different saves. Used to
+-- gate the one-time ClearAllUnboundSlots() sweep below: that sweep only
+-- matters once, the very first time this mod ever runs on a given profile
+-- (to clean up any leftover bindings on these pool slots predating this
+-- mod's ownership of them) - every load after that, normal slot-claim/free
+-- bookkeeping already keeps things clean, so re-running the full sweep on
+-- every single game load/start is unnecessary.
+__NATIVE_HOTKEY_API_DATA = __NATIVE_HOTKEY_API_DATA or {}
+
 local hotkeyApi = {}
 
 local mapMenu = nil
@@ -1176,11 +1188,21 @@ local function Init()
   RegisterEvent("HotkeyApi.Register_Action", hotkeyApi.OnRegisterAction)
   debugLog("Init: RegisterEvent(HotkeyApi.Register_Action, ...) registered")
 
-  -- Clean up before anyone re-registers: any pool slot not already claimed
-  -- (per the blackboard state just loaded above) gets its key binding
-  -- cleared, so stale bindings from a previous session/different mod
-  -- combination never linger on a slot nothing currently uses.
-  ClearAllUnboundSlots()
+  -- One-time-only: the very first time this mod ever runs on this profile,
+  -- sweep every pool slot not already claimed (per the userdata-persisted
+  -- state just loaded above) and clear its key binding, so stale bindings
+  -- predating this mod's ownership of these slots never linger. Gated by
+  -- __NATIVE_HOTKEY_API_DATA (userdata storage, survives across new
+  -- games/different saves) rather than running on every single load/start -
+  -- after this first sweep, normal slot-claim/free bookkeeping (ProcessRegistration,
+  -- ClearUnconfirmed, OnToggleRequestEnabled) already keeps unused slots clean.
+  if not __NATIVE_HOTKEY_API_DATA.initiallyCleared then
+    debugLog("Init: first run on this profile - running the one-time ClearAllUnboundSlots sweep")
+    ClearAllUnboundSlots()
+    __NATIVE_HOTKEY_API_DATA.initiallyCleared = true
+  else
+    debugLog("Init: one-time sweep already done on a previous run - skipping ClearAllUnboundSlots")
+  end
 
   RegisterEvent("HotkeyApi.Register_Request", hotkeyApi.OnRegisterRequest)
 
