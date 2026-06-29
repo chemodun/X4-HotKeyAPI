@@ -13,7 +13,7 @@ Two integration paths exist, both calling into the same registration/dispatch co
 - **MD API** - for Mission Director scripts. Uses `Register_Action` / `Reloaded` cue signals; the registered callback is an MD cue.
 - **Lua API** - for Lua UI scripts. Call `HotkeyApi.RegisterAction(...)` directly; the registered callback is a Lua function, invoked with no MD/blackboard round trip at all.
 
-A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares a mandatory `area` (`'map'` and/or `'pilot'`, `;`-separated if both) describing where it's allowed to fire and what "selected object" means for it, and an optional `isObjectRequired` flag to skip firing when there's nothing selected/targeted.
+A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares a mandatory `area` (one or more of `'map'`, `'pilot'`, `'fps'`, `;`-separated if more than one) describing where it's allowed to fire and what "selected object" means for it, and an optional `isObjectRequired` flag to skip firing when there's nothing selected/targeted.
 
 ## Requirements
 
@@ -71,8 +71,8 @@ It contains:
 
 - `$id` *(string)* - unique identifier of this action, chosen by your mod. The same id always maps to the same physical hotkey slot once assigned.
 - `$version` *(number, optional, default `1`)* - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
-- `$area` *(string, mandatory, no default)* - `'map'` and/or `'pilot'`, separated by `;` if both (e.g. `'map;pilot'`) - where the action is allowed to fire and what "selected object" means for `$isObjectRequired`. `'pilot'` means the player is piloting a ship (no menu open). Each area value has its own minimum supported `$version` (currently both `'map'` and `'pilot'` are available from version `1`) - a future area value added in a later version is only honored for a request that itself declares at least that version.
-- `$isObjectRequired` *(bool, optional, default `false`)* - if `true`, the action is skipped unless a map selection (`'map'`) or ship target (`'pilot'`) is currently present.
+- `$area` *(string, mandatory, no default)* - one or more of `'map'`, `'pilot'`, `'fps'`, separated by `;` if more than one (e.g. `'map;pilot'`) - where the action is allowed to fire and what "selected object" means for `$isObjectRequired`. `'pilot'` means the player is piloting a ship (no menu open). `'fps'` means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported `$version` (currently `'map'`, `'pilot'`, and `'fps'` are all available from version `1`) - a future area value added in a later version is only honored for a request that itself declares at least that version.
+- `$isObjectRequired` *(bool, optional, default `false`)* - if `true`, the action is skipped unless a map selection (`'map'`) or ship target (`'pilot'`) is currently present. Currently skipped for `'fps'`.
 - `$name` *(string)* - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
 - `$actionCue` *(cue reference)* - signalled when the hotkey fires and any target requirement is satisfied. Receives `param = table[$id = id]`, plus `$object` (an MD component reference) if a selection/target was present.
 
@@ -167,6 +167,15 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 - [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659) - for the `UI Extensions and HUD` that makes the generic callback hooks this mod relies on possible.
 
 ## Changelog
+
+### [8.00.04] - 2026-06-30
+
+- **Added**
+  - New area "fps" for first-person on-foot (not piloting, not in any menu) hotkey support.
+- **Fixed**
+  - Extra  Initial clearance of vanilla slots bindings on game start or load.
+- **Changed**
+  - Used slots and blocked ids are now stored in the game userdata instead of the blackboard, so they persist across any game loading or starting.
 
 ### [8.00.03] - 2026-06-28
 
