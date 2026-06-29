@@ -486,7 +486,7 @@ local function ValidateRequest(request)
   local areas = ParseAreas(request.area, version)
   if not areas then
     return nil,
-        string.format("area '%s' is missing/invalid for version %d (must be 'map' and/or 'pilot', separated by ';' if both)", tostring(request.area), version)
+        string.format("area '%s' is missing/invalid for version %d (must be one or more of 'map', 'pilot', 'fps', separated by ';' if more than one)", tostring(request.area), version)
   end
 
   local isObjectRequired = request.isObjectRequired
@@ -738,7 +738,7 @@ function hotkeyApi.onHotKey(action)
     -- re-check both forms on every single dispatch.
     local isObjectRequired = record.isObjectRequired
 
-    if isObjectRequired and not selected then
+    if isObjectRequired and not selected and currentArea ~= "fps" then
       debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
       -- PlaySound("ui_target_set_fail")
       return
