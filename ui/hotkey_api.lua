@@ -30,7 +30,7 @@ local REQUESTS_PAGE_ID = "hotkey_api_requests"
 -- than this is rejected outright in ProcessRegistration, rather than risk
 -- silently misinterpreting a contract this build doesn't know about yet.
 -- onHotKey's dispatch is likewise versioned per bound record.
-local API_VERSION = 2
+local API_VERSION = 1
 
 -- Must be declared before debugLog() below so debugLog can see it as an
 -- upvalue - default true (matches the always-on behaviour this mod has had
@@ -416,7 +416,7 @@ end
 local AREA_MIN_VERSION = {
   map = 1,
   pilot = 1,
-  fps = 2,
+  fps = 1,
 }
 
 -- Parses request.area ("map", "pilot", or "map;pilot" in either order) into
