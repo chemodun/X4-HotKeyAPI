@@ -119,25 +119,31 @@
           misinterpreted), so a future incompatible contract change is safe
           to ship without breaking older consumers using the old shape.
       * area
-        - String, MANDATORY - no default. One or both of 'map' / 'pilot',
-          separated by ';' if both (e.g. 'map;pilot') - where the action is
-          allowed to fire and what "selected object" means for
+        - String, MANDATORY - no default. One or more of 'map' / 'pilot' /
+          'fps', separated by ';' if more than one (e.g. 'map;pilot') - where
+          the action is allowed to fire and what "selected object" means for
           isObjectRequired. 'pilot' means the player is piloting a ship (no
-          menu open). There is no 'any' value: list every area this action
-          should fire in. The hotkey never fires while the detected area is
-          'other' (some other menu open, or no clear context) regardless of
-          this setting, since there is no selected-object notion there for
-          isObjectRequired to fall back on - so 'other' is not a valid value
-          to request either.
+          menu open). 'fps' means the player is on foot/first-person - not in
+          any menu, and not piloting a ship in space (e.g. walking around a
+          station or ship interior). There is no 'any' value: list every area
+          this action should fire in. The hotkey never fires while the
+          detected area is 'other' (some other menu open, or no clear
+          context) regardless of this setting, since there is no
+          selected-object notion there for isObjectRequired to fall back on -
+          so 'other' is not a valid value to request either. 'fps' likewise
+          never has a selected object, so isObjectRequired is never satisfied
+          while 'fps' is the detected area - the same as 'other' in that one
+          respect, but still its own distinct, requestable area.
         - Each area value has its own minimum supported $version (currently
-          both 'map' and 'pilot' are available from version 1 - any area
-          value introduced in a later version will only be accepted from a
-          request that itself declares at least that version, even once
-          this build supports it, so an older request keeps exactly the
+          'map', 'pilot', and 'fps' are all available from version 1 - any
+          area value introduced in a later version will only be accepted
+          from a request that itself declares at least that version, even
+          once this build supports it, so an older request keeps exactly the
           semantics it was written against).
       * isObjectRequired = false
         - Boolean. If true, the action is skipped (with a fail-sound) unless a
-          map selection ('map') or ship target ('pilot') is currently present.
+          map selection ('map') or ship target ('pilot') is currently present
+          - always skipped for 'fps', which has no selected-object notion.
       * name
         - String, display name shown for this action's row in the General
           Controls keybinding list.
