@@ -30,7 +30,7 @@ local REQUESTS_PAGE_ID = "hotkey_api_requests"
 -- than this is rejected outright in ProcessRegistration, rather than risk
 -- silently misinterpreting a contract this build doesn't know about yet.
 -- onHotKey's dispatch is likewise versioned per bound record.
-local API_VERSION = 1
+local API_VERSION = 2
 
 -- Must be declared before debugLog() below so debugLog can see it as an
 -- upvalue - default true (matches the always-on behaviour this mod has had
@@ -327,14 +327,14 @@ end
 -- unclaimed slots never carry a leftover binding into a fresh session
 -- regardless of whether anything ever claims them.
 local function ClearAllUnboundSlots()
-	local clearedCount = 0
-	for _, slot in ipairs(POOL) do
-		if not usedSlots[slot] then
-			clearedCount = clearedCount + 1
-			ClearSlotBinding(slot)
-		end
-	end
-	debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
+  local clearedCount = 0
+  for _, slot in ipairs(POOL) do
+    if usedSlots[slot] == nil then
+      clearedCount = clearedCount + 1
+      ClearSlotBinding(slot)
+    end
+  end
+  debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
 -- Vanilla's own remapInputInternal (gameoptions.xpl) always calls
@@ -359,7 +359,7 @@ local function ResolveDuplicateBindings()
   end
 
   for _, slot in ipairs(POOL) do
-    if usedSlots[slot] then
+    if usedSlots[slot] ~= nil then
       local numericId = POOL_NUMERIC_IDS[slot]
       local inputs = actions[numericId]
       if type(inputs) == "table" then
@@ -404,6 +404,7 @@ end
 local AREA_MIN_VERSION = {
   map = 1,
   pilot = 1,
+  fps = 2,
 }
 
 -- Parses request.area ("map", "pilot", or "map;pilot" in either order) into
@@ -472,12 +473,13 @@ local function ValidateRequest(request)
 
   local areas = ParseAreas(request.area, version)
   if not areas then
-    return nil, string.format("area '%s' is missing/invalid for version %d (must be 'map' and/or 'pilot', separated by ';' if both)", tostring(request.area), version)
+    return nil,
+        string.format("area '%s' is missing/invalid for version %d (must be 'map' and/or 'pilot', separated by ';' if both)", tostring(request.area), version)
   end
 
   local isObjectRequired = request.isObjectRequired
   local isObjectRequiredValid = (isObjectRequired == nil) or (isObjectRequired == true) or (isObjectRequired == false)
-    or (isObjectRequired == 0) or (isObjectRequired == 1)
+      or (isObjectRequired == 0) or (isObjectRequired == 1)
   if not isObjectRequiredValid then
     return nil, "isObjectRequired must be a boolean (or MD's 1/0) if provided"
   end
@@ -619,7 +621,6 @@ function HotkeyApi.RegisterAction(request)
   return ProcessRegistration(request)
 end
 
-
 function hotkeyApi.ClearUnconfirmed()
   debugLog("Clearance: clearing not confirmed (stale) used slots")
   for slot, used in pairs(usedSlots) do
@@ -664,6 +665,8 @@ local function detectCurrentArea()
     end
   elseif IsActuallyPiloting() then
     return "pilot"
+  elseif IsFirstPerson() then
+    return "fps"
   else
     return "other"
   end
@@ -717,7 +720,6 @@ function hotkeyApi.onHotKey(action)
   -- way for incoming requests missing request.version).
   local version = record.version or 1
   if version == 1 then
-
     local selected = GetSelectedObjectForArea(currentArea)
     -- Normalized to a real boolean by ValidateRequest at registration time
     -- (accepts MD's 1/0 or a real Lua boolean either way) - no need to
@@ -880,7 +882,6 @@ function hotkeyApi.OnDisplayOptions(options, config)
   -- valuetype, only the custom-rendered pages (e.g. Hotkey Requests) can use
   -- actual createCheckBox widgets.
   if config and config.optionDefinitions and (not config.optionDefinitions[MANAGEMENT_PAGE_ID]) then
-    hotkeyApi.ClearUnconfirmed()
     config.optionDefinitions[MANAGEMENT_PAGE_ID] = {
       name = function() return ReadText(PAGE_ID, 1000) end,
       [1] = {
@@ -1008,7 +1009,6 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   if optionParameter ~= REQUESTS_PAGE_ID then
     return false
   end
-  hotkeyApi.ClearUnconfirmed()
 
   Helper.clearDataForRefresh(optionsMenu, config.optionsLayer)
   optionsMenu.selectedOption = nil
@@ -1034,7 +1034,8 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   debugLog("DisplayRequestsManagement: %d request(s), %d row(s)/page, page %d/%d, hasFreeSlot=%s",
     #allRequests, rowsPerPage, requestsPage, totalPages, tostring(hasFreeSlot))
 
-  local ftable = frame:addTable(4, { tabOrder = 1, x = optionsMenu.table.x, y = optionsMenu.table.y, width = optionsMenu.table.width, maxVisibleHeight = contentBudget })
+  local ftable = frame:addTable(4,
+    { tabOrder = 1, x = optionsMenu.table.x, y = optionsMenu.table.y, width = optionsMenu.table.width, maxVisibleHeight = contentBudget })
   ftable:setColWidth(1, optionsMenu.table.arrowColumnWidth, false)
   ftable:setColWidth(2, 50)
   ftable:setColWidthPercent(4, 25)
@@ -1113,6 +1114,14 @@ function hotkeyApi.DisplayRequestsManagement(optionParameter, config)
   return true
 end
 
+function hotkeyApi.OnRegisterRequest()
+  Helper.addDelayedOneTimeCallbackOnUpdate(
+    function()
+      debugLog("OnRegisterRequest: Registration is finished. Clearing unconfirmed (stale) used slots.")
+      hotkeyApi.ClearUnconfirmed()
+    end, false, getElapsedTime() + 3)
+end
+
 local function Init()
   playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
   -- Loaded first so the persisted preference applies to every debugLog call
@@ -1173,9 +1182,14 @@ local function Init()
   -- combination never linger on a slot nothing currently uses.
   ClearAllUnboundSlots()
 
+  RegisterEvent("HotkeyApi.Register_Request", hotkeyApi.OnRegisterRequest)
+
   -- Notify MD that lua (re)loaded - consumers listen for md.HotkeyApi.Reloaded
   -- and (re-)send their registration in response.
-  BroadcastReloaded()
+  Helper.addDelayedOneTimeCallbackOnUpdate(
+    function()
+      BroadcastReloaded()
+    end, false, getElapsedTime() + 3)
 end
 
 -- Replaces sn_mod_support_apis' Register_OnLoad_Init (dropping that
