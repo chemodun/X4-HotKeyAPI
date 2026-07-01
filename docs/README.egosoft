@@ -78,7 +78,7 @@ It contains:
 [*] [b]$id[/b] [i](string)[/i] - unique identifier of this action, chosen by your mod. The same id always maps to the same physical hotkey slot once assigned.
 [*] [b]$version[/b] [i](number, optional, default [b]1[/b])[/i] - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
 [*] [b]$area[/b] [i](string, mandatory, no default)[/i] - one or more of [b]'map'[/b], [b]'pilot'[/b], [b]'fps'[/b], separated by [b];[/b] if more than one (e.g. [b]'map;pilot'[/b]) - where the action is allowed to fire and what "selected object" means for [b]$isObjectRequired[/b]. [b]'pilot'[/b] means the player is piloting a ship (no menu open). [b]'fps'[/b] means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported [b]$version[/b] (currently [b]'map'[/b], [b]'pilot'[/b], and [b]'fps'[/b] are all available from version [b]1[/b]) - a future area value added in a later version is only honored for a request that itself declares at least that version.
-[*] [b]$isObjectRequired[/b] [i](bool, optional, default [b]false[/b])[/i] - if [b]true[/b], the action is skipped unless a map selection ([b]'map'[/b]) or ship target ([b]'pilot'[/b]) is currently present. Currently skipped for [b]'fps'[/b].
+[*] [b]$isObjectRequired[/b] [i](bool, optional, default [b]false[/b])[/i] - if [b]true[/b], the action is skipped unless a map selection ([b]'map'[/b]), ship target ([b]'pilot'[/b]), or soft-target crosshair object ([b]'fps'[/b]) is currently present.
 [*] [b]$name[/b] [i](string)[/i] - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
 [*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives [b]param = table[$id = id][/b], plus [b]$object[/b] (an MD component reference) if a selection/target was present.
 [/list]
@@ -174,6 +174,13 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [size=130][u]Changelog[/u][/size]
 
+[size=125][u][8.00.05] - 2026-07-01[/u][/size]
+[list]
+[*] [b]Added[/b]
+[list]
+[*] FPS area now provides a selected object (the object the player's crosshair is currently on) to [b]isObjectRequired = true[/b] actions, and correctly skips firing when nothing is targeted.
+[/list]
+[/list]
 [size=125][u][8.00.04] - 2026-06-30[/u][/size]
 [list]
 [*] [b]Added[/b]
