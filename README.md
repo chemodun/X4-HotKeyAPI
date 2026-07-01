@@ -72,7 +72,7 @@ It contains:
 - `$id` *(string)* - unique identifier of this action, chosen by your mod. The same id always maps to the same physical hotkey slot once assigned.
 - `$version` *(number, optional, default `1`)* - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
 - `$area` *(string, mandatory, no default)* - one or more of `'map'`, `'pilot'`, `'fps'`, separated by `;` if more than one (e.g. `'map;pilot'`) - where the action is allowed to fire and what "selected object" means for `$isObjectRequired`. `'pilot'` means the player is piloting a ship (no menu open). `'fps'` means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported `$version` (currently `'map'`, `'pilot'`, and `'fps'` are all available from version `1`) - a future area value added in a later version is only honored for a request that itself declares at least that version.
-- `$isObjectRequired` *(bool, optional, default `false`)* - if `true`, the action is skipped unless a map selection (`'map'`) or ship target (`'pilot'`) is currently present. Currently skipped for `'fps'`.
+- `$isObjectRequired` *(bool, optional, default `false`)* - if `true`, the action is skipped unless a map selection (`'map'`), ship target (`'pilot'`), or soft-target crosshair object (`'fps'`) is currently present.
 - `$name` *(string)* - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
 - `$actionCue` *(cue reference)* - signalled when the hotkey fires and any target requirement is satisfied. Receives `param = table[$id = id]`, plus `$object` (an MD component reference) if a selection/target was present.
 
@@ -167,6 +167,11 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 - [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659) - for the `UI Extensions and HUD` that makes the generic callback hooks this mod relies on possible.
 
 ## Changelog
+
+### [8.00.05] - 2026-07-01
+
+- **Added**
+  - FPS area now provides a selected object (the object the player's crosshair is currently on) to `isObjectRequired = true` actions, and correctly skips firing when nothing is targeted.
 
 ### [8.00.04] - 2026-06-30
 

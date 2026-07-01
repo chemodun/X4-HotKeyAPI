@@ -18,6 +18,12 @@ ffi.cdef [[
 	UniverseID GetPlayerID(void);
 	UniverseID GetPlayerOccupiedShipID(void);
 	const char* GetPlayerCurrentControlGroup(void);
+	typedef struct {
+		uint64_t softtargetID;
+		const char* softtargetConnectionName;
+		uint32_t messageID;
+	} SofttargetDetails2;
+	SofttargetDetails2 GetSofttarget2(void);
 ]]
 
 local PAGE_ID = 1972092431
@@ -685,7 +691,8 @@ local function detectCurrentArea()
 end
 
 -- Returns the selected/targeted object component id for the given area, or
--- nil. Only "map"/"pilot" carry a notion of "selection" at all.
+-- nil. "map" uses the map's selected component, "pilot" uses GetPlayerTarget(),
+-- "fps" uses C.GetSofttarget2() (the object the player's crosshair is on).
 local function GetSelectedObjectForArea(area)
   if area == "map" and mapMenu then
     local selectedComponent = nil
@@ -703,6 +710,13 @@ local function GetSelectedObjectForArea(area)
     local target = GetPlayerTarget()
     if target and (target ~= 0) then
       return target
+    end
+    return nil
+  elseif area == "fps" then
+    local softtarget = C.GetSofttarget2()
+    local id = tonumber(softtarget.softtargetID)
+    if id and (id ~= 0) and IsValidComponent(id) then
+      return id
     end
     return nil
   end
@@ -738,12 +752,14 @@ function hotkeyApi.onHotKey(action)
     -- re-check both forms on every single dispatch.
     local isObjectRequired = record.isObjectRequired
 
-    if isObjectRequired and not selected and currentArea ~= "fps" then
+    if isObjectRequired and not selected then
       debugLog("onHotKey: isObjectRequired but no selection/target for area '%s' - skipping", tostring(record.area))
       -- PlaySound("ui_target_set_fail")
       return
     elseif isObjectRequired then
       debugLog("onHotKey: isObjectRequired and selected object/component %s for area '%s'", tostring(selected), tostring(record.area))
+    else
+      debugLog("onHotKey: isObjectRequired not set - but target/selection is %s for area '%s'", tostring(selected), tostring(record.area))
     end
 
     -- Direct-Lua dispatch: a real function call, no blackboard/event relay

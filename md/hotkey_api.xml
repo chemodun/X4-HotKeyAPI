@@ -142,8 +142,8 @@
           semantics it was written against).
       * isObjectRequired = false
         - Boolean. If true, the action is skipped (with a fail-sound) unless a
-          map selection ('map') or ship target ('pilot') is currently present
-          - always skipped for 'fps', which has no selected-object notion.
+          map selection ('map'), ship target ('pilot'), or soft-target crosshair
+          object ('fps') is currently present.
       * name
         - String, display name shown for this action's row in the General
           Controls keybinding list.
