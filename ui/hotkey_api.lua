@@ -805,6 +805,15 @@ local function BuildActionIdToPages(config)
   end
 end
 
+-- Formats a page-set table ({space=true, menus=true}) as a sorted string for
+-- debug output.
+local function PageSetStr(pages)
+  local parts = {}
+  for p in pairs(pages) do parts[#parts + 1] = p end
+  table.sort(parts)
+  return table.concat(parts, ",")
+end
+
 -- Returns the set of page names (e.g. {space=true, menus=true}) that conflict
 -- with a given slot's registered area. Empty table if slot has no record.
 local function GetSlotAffectedPages(slot)
@@ -914,6 +923,8 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
     -- Case (b): our slot is being remapped - check vanilla actions on relevant pages
     local slot = POOL_NUMERIC_IDS_REVERSE[controlcode - FUNCTION_KEY_BASE]
     local slotPages = GetSlotAffectedPages(slot)
+    debugLog("EnrichRemapConflicts(b): slot=%s pages=[%s] new key=[%d,%d,%d]",
+      tostring(slot), PageSetStr(slotPages), newinputtype, newinputcode, cmpSgn)
     for actionId, inputs in pairs(actions) do
       local inOurPool = (actionId >= 23) and (actionId <= 70)
       if not inOurPool and type(inputs) == "table" then
@@ -926,6 +937,7 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
           if pageMatch then
             for _, input in ipairs(inputs) do
               if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
+                debugLog("EnrichRemapConflicts(b): action %d (pages=[%s]) conflicts - added", actionId, PageSetStr(actionPages))
                 table.insert(conflicts, { control = { "actions", actionId }, mappable = true })
                 break
               end
@@ -937,6 +949,8 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
   else
     -- Case (a): vanilla control being remapped - add our slots that overlap this page
     local vanillaPage = OPTION_TO_PAGE[currentOption]
+    debugLog("EnrichRemapConflicts(a): vanilla page=%s (option=%s) new key=[%d,%d,%d]",
+      tostring(vanillaPage), tostring(currentOption), newinputtype, newinputcode, cmpSgn)
     for _, slot in ipairs(POOL) do
       if usedSlots[slot] ~= nil then
         local slotPages = GetSlotAffectedPages(slot)
@@ -946,6 +960,7 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
           if type(inputs) == "table" then
             for _, input in ipairs(inputs) do
               if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
+                debugLog("EnrichRemapConflicts(a): slot %s (pages=[%s]) conflicts - added", slot, PageSetStr(slotPages))
                 table.insert(conflicts, { control = { "functions", FUNCTION_KEY_BASE + numericId }, mappable = true })
                 break
               end
@@ -971,7 +986,10 @@ function hotkeyApi.ResolveConflicts(newinput, controltype, controlcode, currentO
   if ourFunctionCode then
     -- Case (b): our slot being remapped - clear relevant vanilla pages only
     local slot = POOL_NUMERIC_IDS_REVERSE[controlcode - FUNCTION_KEY_BASE]
-    for pageName in pairs(GetSlotAffectedPages(slot)) do
+    local slotPages = GetSlotAffectedPages(slot)
+    debugLog("ResolveConflicts(b): slot=%s pages=[%s]", tostring(slot), PageSetStr(slotPages))
+    for pageName in pairs(slotPages) do
+      debugLog("ResolveConflicts(b): clearing page %s", pageName)
       fixForPage(pageName)
     end
   else
@@ -980,6 +998,8 @@ function hotkeyApi.ResolveConflicts(newinput, controltype, controlcode, currentO
     local ok, actions = pcall(GetInputActionMap)
     if not ok or type(actions) ~= "table" then return end
     local nt, nc, ns = newinput[1], newinput[2], newinput[3] or 0
+    debugLog("ResolveConflicts(a): vanilla page=%s (option=%s) key=[%d,%d,%d]",
+      tostring(vanillaPage), tostring(currentOption), nt, nc, ns)
     for _, slot in ipairs(POOL) do
       if usedSlots[slot] ~= nil then
         local slotPages = GetSlotAffectedPages(slot)
@@ -989,6 +1009,7 @@ function hotkeyApi.ResolveConflicts(newinput, controltype, controlcode, currentO
             for i = #inputs, 1, -1 do
               local inp = inputs[i]
               if inp[1] == nt and inp[2] == nc and ((inp[3] == 0) or (ns == 0) or (inp[3] == ns)) then
+                debugLog("ResolveConflicts(a): removed key [%d,%d,%d] from slot %s", nt, nc, ns, slot)
                 table.remove(inputs, i)
               end
             end
