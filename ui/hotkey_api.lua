@@ -81,6 +81,11 @@ for i, actionId in ipairs(POOL) do
   POOL_NUMERIC_IDS[actionId] = 22 + i
 end
 
+local POOL_NUMERIC_IDS_REVERSE = {}
+for slot, numericId in pairs(POOL_NUMERIC_IDS) do
+  POOL_NUMERIC_IDS_REVERSE[numericId] = slot
+end
+
 local BLACKBOARD_BOUND = "$hotkey_api_bound"
 local BLACKBOARD_SELECTED = "$hotkey_api_selected"
 local BLACKBOARD_ACTION_CUE = "$hotkey_api_action_cue"
@@ -358,61 +363,6 @@ local function ClearAllUnboundSlots()
   debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
--- Vanilla's own remapInputInternal (gameoptions.xpl) always calls
--- menu.fixInputConflicts(newinput) with no checkall=true - it only clears a
--- conflicting binding found in the page being remapped on (menu.controlsorder),
--- the same page/checkall scoping gap as menu.checkForConflicts. So when a
--- cross-page conflict is shown on our own Hotkey Bindings page and the player
--- confirms "apply anyway", the original binding elsewhere is never actually
--- cleared - both controls end up bound to the same key. Rather than patch
--- gameoptions.xpl, we self-heal here instead, strictly: if a key bound to one
--- of our slots is still also bound to any other action by the time this page
--- next renders (which happens immediately after every remap, via
--- remapInputInternal's own trailing menu.submenuHandler(menu.currentOption)
--- call), we drop OUR OWN binding rather than leave a live duplicate - the
--- original assignment is left exactly as it was, the player just doesn't get
--- to keep that key on our side.
-local function ResolveDuplicateBindings()
-  local duplicatesFound = false
-  local ok, actions = pcall(GetInputActionMap)
-  if not ok or (type(actions) ~= "table") then
-    return duplicatesFound
-  end
-
-  for _, slot in ipairs(POOL) do
-    if usedSlots[slot] ~= nil then
-      local numericId = POOL_NUMERIC_IDS[slot]
-      local inputs = actions[numericId]
-      if type(inputs) == "table" then
-        local duplicate = false
-        for _, input in ipairs(inputs) do
-          for otherNumericId, otherInputs in pairs(actions) do
-            if (otherNumericId ~= numericId) and (type(otherInputs) == "table") then
-              for _, otherInput in ipairs(otherInputs) do
-                if (otherInput[1] == input[1]) and (otherInput[2] == input[2]) and ((otherInput[3] or 0) == (input[3] or 0)) then
-                  duplicate = true
-                  break
-                end
-              end
-            end
-            if duplicate then
-              break
-            end
-          end
-          if duplicate then
-            break
-          end
-        end
-        if duplicate then
-          debugLog("ResolveDuplicateBindings: slot %s's key is still also bound elsewhere - clearing our own side", slot)
-          ClearSlotBinding(slot)
-          duplicatesFound = true
-        end
-      end
-    end
-  end
-  return duplicatesFound
-end
 
 -- Minimum request.version each area token requires - not just a flat
 -- valid/invalid set, so a future version can introduce a new area value
@@ -801,6 +751,76 @@ end
 -- Ego's own controlFunctions entries (seen only in the low hundreds).
 local FUNCTION_KEY_BASE = 100000
 
+-- Maps each area token to the vanilla controlsorder page names that a hotkey
+-- fired in that area can conflict with.
+-- pilot: only active in space flight, no overlap with walking.
+-- map: active while the map overlay is open - conflicts with all menu controls
+--      AND with space controls that carry context 2 (e.g. camera, diplomacy
+--      shortcuts - many General controls remain active under the map).
+-- fps: only active on foot, no overlap with space controls.
+local AREA_PAGES = {
+  pilot = { space = true },
+  map   = { space = true, menus = true },
+  fps   = { firstperson = true },
+}
+
+-- Maps menu.currentOption (the active controls-page key while remapping) to the
+-- corresponding config.input.controlsorder page name.
+local OPTION_TO_PAGE = {
+  keyboard_space       = "space",
+  keyboard_menus       = "menus",
+  keyboard_firstperson = "firstperson",
+}
+
+-- Caches which controlsorder page each vanilla action ID belongs to.
+-- Built in OnDisplayControlsOrder (before our hotkey_api page is registered)
+-- and refreshed on every render so it stays in sync.
+local actionIdToPages = {}
+
+local function BuildActionIdToPages(config)
+  actionIdToPages = {}
+  for pageName, pageGroups in pairs(config.input.controlsorder) do
+    if pageName ~= "hotkey_api" then
+      for _, group in ipairs(pageGroups) do
+        for _, entry in ipairs(group) do
+          if type(entry) == "table" then
+            if entry[1] == "actions" then
+              local t = actionIdToPages[entry[2]]
+              if not t then t = {}; actionIdToPages[entry[2]] = t end
+              t[pageName] = true
+            elseif entry[1] == "functions" then
+              local func = config.input.controlFunctions[entry[2]]
+              if func then
+                for _, actionId in ipairs(func.actions or {}) do
+                  local t = actionIdToPages[actionId]
+                  if not t then t = {}; actionIdToPages[actionId] = t end
+                  t[pageName] = true
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Returns the set of page names (e.g. {space=true, menus=true}) that conflict
+-- with a given slot's registered area. Empty table if slot has no record.
+local function GetSlotAffectedPages(slot)
+  local record = boundHotkeys[slot]
+  if not record or not record.area then return {} end
+  local pages = {}
+  for area in pairs(record.area) do
+    if AREA_PAGES[area] then
+      for pageName in pairs(AREA_PAGES[area]) do
+        pages[pageName] = true
+      end
+    end
+  end
+  return pages
+end
+
 -- Own submenu (not appended to "General Controls" anymore): routed through
 -- menu.displayControls (proper remap/add/remove/reset buttons, same as
 -- ADDON_DETAILMONITOR_I/etc.) via the new generic
@@ -810,42 +830,45 @@ local FUNCTION_KEY_BASE = 100000
 -- this hook is the only thing populating it - no stale-row removal needed
 -- the way the old "appended to keyboard_space" version required.
 function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config)
-  if optionParameter ~= CONTROLS_PAGE_ID then
-    return controlsorder
-  end
-
-  -- Runs on every render of this page, including the one immediately after
-  -- a remap (remapInputInternal's own trailing submenuHandler call) - see
-  -- ResolveDuplicateBindings' own comment for why this is needed here.
-  if ResolveDuplicateBindings() then
-    debugLog("OnDisplayControlsOrder: resolved duplicate bindings - refreshing controlsorder")
-    if optionsMenu and optionsMenu.refresh then
-      optionsMenu.refresh()
-    end
-  end
-
+  -- Build controlFunctions entries and register our page in
+  -- config.input.controlsorder unconditionally (not only when our own page is
+  -- rendered) so that vanilla's checkForConflicts(checkall=true) in
+  -- gameoptions.xpl - which does pairs(config.input.controlsorder) - finds
+  -- our bindings when the player remaps on any controls page, not just ours.
+  -- displayControls_modifyControlsOrder fires for every controls page render
+  -- (space/menus/firstperson as well as our own), so config is always current.
   local groupRow = {
     id = "hotkey_api_group",
     title = ReadText(PAGE_ID, 1100),
     mappable = true,
   }
   local rowCount = 0
-  for _, slot in ipairs(POOL) do
-    local record = boundHotkeys[slot]
-    local numericId = POOL_NUMERIC_IDS[slot]
-    if record and numericId and config and config.input and config.input.controlFunctions then
-      local functionKey = FUNCTION_KEY_BASE + numericId
-      config.input.controlFunctions[functionKey] = {
-        name = record.name,
-        definingcontrol = { "actions", numericId },
-        actions = { numericId },
-        states = {},
-        ranges = {},
-        contexts = { 1, 2 },
-      }
-      rowCount = rowCount + 1
-      groupRow[rowCount] = { "functions", functionKey }
+  if config and config.input and config.input.controlFunctions then
+    for _, slot in ipairs(POOL) do
+      local record = boundHotkeys[slot]
+      local numericId = POOL_NUMERIC_IDS[slot]
+      if record and numericId then
+        local functionKey = FUNCTION_KEY_BASE + numericId
+        config.input.controlFunctions[functionKey] = {
+          name = record.name,
+          definingcontrol = { "actions", numericId },
+          actions = { numericId },
+          states = {},
+          ranges = {},
+          contexts = { 1, 2 },
+        }
+        rowCount = rowCount + 1
+        groupRow[rowCount] = { "functions", functionKey }
+      end
     end
+    if config.input.controlsorder then
+      BuildActionIdToPages(config)
+      config.input.controlsorder["hotkey_api"] = { groupRow }
+    end
+  end
+
+  if optionParameter ~= CONTROLS_PAGE_ID then
+    return controlsorder
   end
 
   debugLog("OnDisplayControlsOrder: rendering %d bound row(s) on own page", rowCount)
@@ -872,20 +895,108 @@ function hotkeyApi.IsControlsPage(optionParameter)
   return ReadText(PAGE_ID, 1100)
 end
 
-local function IsOurFunctionCode(controltype, controlcode)
-  return (controltype == "functions") and (controlcode >= (FUNCTION_KEY_BASE + 23)) and (controlcode <= (FUNCTION_KEY_BASE + 70))
+-- Callback for gameoptions.xpl's "remapInput_enrichConflicts" hook.
+-- Appends conflict entries into the conflicts table using page-level area
+-- filtering so only genuinely overlapping controls appear in the popup:
+-- (a) Vanilla control being remapped to a key one of our slots uses: adds our
+--     slot only when the current vanilla page is in the slot's affected pages.
+-- (b) One of our controls being remapped to a key a vanilla action uses: adds
+--     that action only when it belongs to a page in the slot's affected pages.
+function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, newinputtype, newinputcode, newinputsgn, currentOption)
+  if type(newinputtype) ~= "number" then return end
+  local ok, actions = pcall(GetInputActionMap)
+  if not ok or type(actions) ~= "table" then return end
+  local cmpSgn = newinputsgn or 0
+  local ourFunctionCode = (controltype == "functions")
+      and (controlcode >= (FUNCTION_KEY_BASE + 23))
+      and (controlcode <= (FUNCTION_KEY_BASE + 70))
+  if ourFunctionCode then
+    -- Case (b): our slot is being remapped - check vanilla actions on relevant pages
+    local slot = POOL_NUMERIC_IDS_REVERSE[controlcode - FUNCTION_KEY_BASE]
+    local slotPages = GetSlotAffectedPages(slot)
+    for actionId, inputs in pairs(actions) do
+      local inOurPool = (actionId >= 23) and (actionId <= 70)
+      if not inOurPool and type(inputs) == "table" then
+        local actionPages = actionIdToPages[actionId]
+        if actionPages then
+          local pageMatch = false
+          for pageName in pairs(slotPages) do
+            if actionPages[pageName] then pageMatch = true; break end
+          end
+          if pageMatch then
+            for _, input in ipairs(inputs) do
+              if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
+                table.insert(conflicts, { control = { "actions", actionId }, mappable = true })
+                break
+              end
+            end
+          end
+        end
+      end
+    end
+  else
+    -- Case (a): vanilla control being remapped - add our slots that overlap this page
+    local vanillaPage = OPTION_TO_PAGE[currentOption]
+    for _, slot in ipairs(POOL) do
+      if usedSlots[slot] ~= nil then
+        local slotPages = GetSlotAffectedPages(slot)
+        if not vanillaPage or slotPages[vanillaPage] then
+          local numericId = POOL_NUMERIC_IDS[slot]
+          local inputs = actions[numericId]
+          if type(inputs) == "table" then
+            for _, input in ipairs(inputs) do
+              if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
+                table.insert(conflicts, { control = { "functions", FUNCTION_KEY_BASE + numericId }, mappable = true })
+                break
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end
 
--- Predicate callback for gameoptions.xpl's "remapInput_useCheckAll" hook
--- (menu.remapInput, right before menu.checkForConflicts is called). Default
--- vanilla behaviour only checks the current page's own controlsorder, so a
--- key bound here would never be flagged as conflicting with e.g. a "General
--- Controls" binding on a different page. Our pool is always-active
--- (INPUT_CONTEXT_ADDON_DEBUGLOG), so cross-page conflicts are real and worth
--- surfacing - hence asking for the full (checkall=true) scan whenever the
--- control being remapped is one of ours.
-function hotkeyApi.UseCheckAllForRemap(controltype, controlcode)
-  return IsOurFunctionCode(controltype, controlcode)
+-- Callback for gameoptions.xpl's "remapInput_resolveConflicts" hook.
+-- Clears the winning key from conflicting bindings using page-level filtering:
+-- (a) Vanilla control being remapped to our key: directly removes the key from
+--     each of our slots whose area overlaps the current vanilla page.
+-- (b) Our control being remapped to a vanilla key: calls fixForPage for each
+--     page in the slot's affected pages so only relevant vanilla controls are
+--     cleared, not everything across all pages.
+function hotkeyApi.ResolveConflicts(newinput, controltype, controlcode, currentOption, fixForPage)
+  local ourFunctionCode = (controltype == "functions")
+      and (controlcode >= (FUNCTION_KEY_BASE + 23))
+      and (controlcode <= (FUNCTION_KEY_BASE + 70))
+  if ourFunctionCode then
+    -- Case (b): our slot being remapped - clear relevant vanilla pages only
+    local slot = POOL_NUMERIC_IDS_REVERSE[controlcode - FUNCTION_KEY_BASE]
+    for pageName in pairs(GetSlotAffectedPages(slot)) do
+      fixForPage(pageName)
+    end
+  else
+    -- Case (a): vanilla control being remapped - clear our slots that overlap
+    local vanillaPage = OPTION_TO_PAGE[currentOption]
+    local ok, actions = pcall(GetInputActionMap)
+    if not ok or type(actions) ~= "table" then return end
+    local nt, nc, ns = newinput[1], newinput[2], newinput[3] or 0
+    for _, slot in ipairs(POOL) do
+      if usedSlots[slot] ~= nil then
+        local slotPages = GetSlotAffectedPages(slot)
+        if not vanillaPage or slotPages[vanillaPage] then
+          local inputs = actions[POOL_NUMERIC_IDS[slot]]
+          if type(inputs) == "table" then
+            for i = #inputs, 1, -1 do
+              local inp = inputs[i]
+              if inp[1] == nt and inp[2] == nc and ((inp[3] == 0) or (ns == 0) or (inp[3] == ns)) then
+                table.remove(inputs, i)
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end
 
 -- Injects a navigation row into the vanilla "main" page (the top-level
@@ -1187,14 +1298,19 @@ local function Init()
     optionsMenu.registerCallback("submenuHandler_customPage", hotkeyApi.DisplayRequestsManagement)
     debugLog("Init: declared '%s' as a custom-rendered page", REQUESTS_PAGE_ID)
 
-    -- Cross-page conflict checking for our always-active debug-pool keys -
-    -- conservatively unconditional (same as "any" was) regardless of each
-    -- hotkey's configured area: per-area filtering turned out unreliable
-    -- (depends on per-row context numbers that were never confirmed, and
-    -- testing showed it not behaving distinctly across areas), so better to
-    -- over-warn than silently miss a real conflict.
-    optionsMenu.registerCallback("remapInput_useCheckAll", hotkeyApi.UseCheckAllForRemap)
-    debugLog("Init: registered remapInput_useCheckAll callback")
+    -- Direct conflict enrichment: our callback appends entries into the
+    -- vanilla conflicts table rather than triggering a separate cross-page
+    -- scan. Covers both directions: vanilla control remapped to one of our
+    -- keys (case a), and one of our controls remapped to a vanilla key (case b).
+    optionsMenu.registerCallback("remapInput_enrichConflicts", hotkeyApi.EnrichRemapConflicts)
+    debugLog("Init: registered remapInput_enrichConflicts callback")
+
+    -- Conflict resolution: clears the winning binding's cross-page duplicates
+    -- after the player confirms a remap. For our controls, triggers checkall to
+    -- clear vanilla pages; vanilla-to-our-key direction is handled directly in
+    -- gameoptions.xpl without needing a callback.
+    optionsMenu.registerCallback("remapInput_resolveConflicts", hotkeyApi.ResolveConflicts)
+    debugLog("Init: registered remapInput_resolveConflicts callback")
   end
 
   SetScript("onHotkey", hotkeyApi.onHotKey)
