@@ -993,30 +993,15 @@ function hotkeyApi.ResolveConflicts(newinput, controltype, controlcode, currentO
       fixForPage(pageName)
     end
   else
-    -- Case (a): vanilla control being remapped - clear our slots that overlap
+    -- Case (a): vanilla control being remapped to our key.
+    -- fixForPage("hotkey_api") uses menu.fixInputConflictsInternal which
+    -- operates on menu.controls.actions - the live table that SaveInputSettings
+    -- will persist. Calling GetInputActionMap() here would return a fresh copy
+    -- whose modifications are discarded when vanilla later saves the live table.
     local vanillaPage = OPTION_TO_PAGE[currentOption]
-    local ok, actions = pcall(GetInputActionMap)
-    if not ok or type(actions) ~= "table" then return end
-    local nt, nc, ns = newinput[1], newinput[2], newinput[3] or 0
-    debugLog("ResolveConflicts(a): vanilla page=%s (option=%s) key=[%d,%d,%d]",
-      tostring(vanillaPage), tostring(currentOption), nt, nc, ns)
-    for _, slot in ipairs(POOL) do
-      if usedSlots[slot] ~= nil then
-        local slotPages = GetSlotAffectedPages(slot)
-        if not vanillaPage or slotPages[vanillaPage] then
-          local inputs = actions[POOL_NUMERIC_IDS[slot]]
-          if type(inputs) == "table" then
-            for i = #inputs, 1, -1 do
-              local inp = inputs[i]
-              if inp[1] == nt and inp[2] == nc and ((inp[3] == 0) or (ns == 0) or (inp[3] == ns)) then
-                debugLog("ResolveConflicts(a): removed key [%d,%d,%d] from slot %s", nt, nc, ns, slot)
-                table.remove(inputs, i)
-              end
-            end
-          end
-        end
-      end
-    end
+    debugLog("ResolveConflicts(a): vanilla page=%s (option=%s) key=[%d,%d,%d] - clearing hotkey_api page",
+      tostring(vanillaPage), tostring(currentOption), newinput[1], newinput[2], newinput[3] or 0)
+    fixForPage("hotkey_api")
   end
 end
 
