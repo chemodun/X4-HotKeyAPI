@@ -782,19 +782,29 @@ local function BuildActionIdToPages(config)
   for pageName, pageGroups in pairs(config.input.controlsorder) do
     if pageName ~= "hotkey_api" then
       for _, group in ipairs(pageGroups) do
+        local groupMappable = group.mappable ~= false
         for _, entry in ipairs(group) do
           if type(entry) == "table" then
             if entry[1] == "actions" then
               local t = actionIdToPages[entry[2]]
               if not t then t = {}; actionIdToPages[entry[2]] = t end
-              t[pageName] = true
+              -- false wins: if any group containing this action is non-mappable, keep false
+              if t[pageName] == nil then
+                t[pageName] = groupMappable
+              elseif not groupMappable then
+                t[pageName] = false
+              end
             elseif entry[1] == "functions" then
               local func = config.input.controlFunctions[entry[2]]
               if func then
                 for _, actionId in ipairs(func.actions or {}) do
                   local t = actionIdToPages[actionId]
                   if not t then t = {}; actionIdToPages[actionId] = t end
-                  t[pageName] = true
+                  if t[pageName] == nil then
+                    t[pageName] = groupMappable
+                  elseif not groupMappable then
+                    t[pageName] = false
+                  end
                 end
               end
             end
@@ -930,15 +940,23 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
       if not inOurPool and type(inputs) == "table" then
         local actionPages = actionIdToPages[actionId]
         if actionPages then
+          -- mappable: false wins across all matching pages (mirrors vanilla formula)
           local pageMatch = false
+          local conflictMappable = true
           for pageName in pairs(slotPages) do
-            if actionPages[pageName] then pageMatch = true; break end
+            if actionPages[pageName] ~= nil then
+              pageMatch = true
+              -- vanilla: mappable = groupMappable or (newinputtype ~= 1)
+              local m = actionPages[pageName] or (newinputtype ~= 1)
+              if not m then conflictMappable = false end
+            end
           end
           if pageMatch then
             for _, input in ipairs(inputs) do
               if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
-                debugLog("EnrichRemapConflicts(b): action %d (pages=[%s]) conflicts - added", actionId, PageSetStr(actionPages))
-                table.insert(conflicts, { control = { "actions", actionId }, mappable = true })
+                debugLog("EnrichRemapConflicts(b): action %d (pages=[%s]) conflicts - added (mappable=%s)",
+                  actionId, PageSetStr(actionPages), tostring(conflictMappable))
+                table.insert(conflicts, { control = { "actions", actionId }, mappable = conflictMappable })
                 break
               end
             end
