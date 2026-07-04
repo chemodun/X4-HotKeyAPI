@@ -772,41 +772,55 @@ local OPTION_TO_PAGE = {
   keyboard_firstperson = "firstperson",
 }
 
--- Caches which controlsorder page each vanilla action ID belongs to.
+-- Vanilla input bindings live in three parallel numeric-id namespaces -
+-- "actions" (single press), "states" (held/toggle), "ranges" (analog) - each
+-- with its own GetInputActionMap()/GetInputStateMap()/GetInputRangeMap()
+-- table (mirrors menu.controls in gameoptions.xpl). Menu navigation
+-- (arrows/WASD/Enter/Escape, the "Menus - Digital"/etc. groups on the
+-- "menus" controlsorder page) binds almost entirely through "states", not
+-- "actions" - scanning/caching "actions" alone (the original implementation)
+-- silently missed every same-key collision with those, which is why binding
+-- a menu-navigation key to a map-area hotkey produced no conflict warning
+-- at all.
+local INPUT_TYPES = { "actions", "states", "ranges" }
+local GET_INPUT_MAP = { actions = GetInputActionMap, states = GetInputStateMap, ranges = GetInputRangeMap }
+
+-- Caches which controlsorder page each vanilla id belongs to, per input type
+-- ({actions={}, states={}, ranges={}}, each id -> {pageName -> mappable}).
 -- Built in OnDisplayControlsOrder (before our hotkey_api page is registered)
 -- and refreshed on every render so it stays in sync.
-local actionIdToPages = {}
+local idToPages = { actions = {}, states = {}, ranges = {} }
 
-local function BuildActionIdToPages(config)
-  actionIdToPages = {}
+-- false wins: if any group containing this id is non-mappable, keep false.
+local function MarkIdPage(cache, id, pageName, groupMappable)
+  local t = cache[id]
+  if not t then t = {}; cache[id] = t end
+  if t[pageName] == nil then
+    t[pageName] = groupMappable
+  elseif not groupMappable then
+    t[pageName] = false
+  end
+end
+
+local function BuildIdToPages(config)
+  idToPages = { actions = {}, states = {}, ranges = {} }
   for pageName, pageGroups in pairs(config.input.controlsorder) do
     if pageName ~= "hotkey_api" then
       for _, group in ipairs(pageGroups) do
         local groupMappable = group.mappable ~= false
         for _, entry in ipairs(group) do
           if type(entry) == "table" then
-            if entry[1] == "actions" then
-              local t = actionIdToPages[entry[2]]
-              if not t then t = {}; actionIdToPages[entry[2]] = t end
-              -- false wins: if any group containing this action is non-mappable, keep false
-              if t[pageName] == nil then
-                t[pageName] = groupMappable
-              elseif not groupMappable then
-                t[pageName] = false
-              end
-            elseif entry[1] == "functions" then
+            if entry[1] == "functions" then
               local func = config.input.controlFunctions[entry[2]]
               if func then
-                for _, actionId in ipairs(func.actions or {}) do
-                  local t = actionIdToPages[actionId]
-                  if not t then t = {}; actionIdToPages[actionId] = t end
-                  if t[pageName] == nil then
-                    t[pageName] = groupMappable
-                  elseif not groupMappable then
-                    t[pageName] = false
+                for _, inputType in ipairs(INPUT_TYPES) do
+                  for _, id in ipairs(func[inputType] or {}) do
+                    MarkIdPage(idToPages[inputType], id, pageName, groupMappable)
                   end
                 end
               end
+            elseif idToPages[entry[1]] then
+              MarkIdPage(idToPages[entry[1]], entry[2], pageName, groupMappable)
             end
           end
         end
@@ -881,7 +895,7 @@ function hotkeyApi.OnDisplayControlsOrder(optionParameter, controlsorder, config
       end
     end
     if config.input.controlsorder then
-      BuildActionIdToPages(config)
+      BuildIdToPages(config)
       config.input.controlsorder["hotkey_api"] = { groupRow }
     end
   end
@@ -919,8 +933,9 @@ end
 -- filtering so only genuinely overlapping controls appear in the popup:
 -- (a) Vanilla control being remapped to a key one of our slots uses: adds our
 --     slot only when the current vanilla page is in the slot's affected pages.
--- (b) One of our controls being remapped to a key a vanilla action uses: adds
---     that action only when it belongs to a page in the slot's affected pages.
+-- (b) One of our controls being remapped to a key a vanilla action/state/range
+--     uses: adds that control only when it belongs to a page in the slot's
+--     affected pages.
 function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, newinputtype, newinputcode, newinputsgn, currentOption)
   if type(newinputtype) ~= "number" then return end
   local ok, actions = pcall(GetInputActionMap)
@@ -930,34 +945,52 @@ function hotkeyApi.EnrichRemapConflicts(conflicts, controltype, controlcode, new
       and (controlcode >= (FUNCTION_KEY_BASE + 23))
       and (controlcode <= (FUNCTION_KEY_BASE + 70))
   if ourFunctionCode then
-    -- Case (b): our slot is being remapped - check vanilla actions on relevant pages
+    -- Case (b): our slot is being remapped - check vanilla actions/states/
+    -- ranges on relevant pages (all three real input namespaces - see
+    -- INPUT_TYPES/idToPages above; menu-navigation binds mostly through
+    -- "states", which the actions-only original pass never saw).
     local slot = POOL_NUMERIC_IDS_REVERSE[controlcode - FUNCTION_KEY_BASE]
     local slotPages = GetSlotAffectedPages(slot)
     debugLog("EnrichRemapConflicts(b): slot=%s pages=[%s] new key=[%d,%d,%d]",
       tostring(slot), PageSetStr(slotPages), newinputtype, newinputcode, cmpSgn)
-    for actionId, inputs in pairs(actions) do
-      local inOurPool = (actionId >= 23) and (actionId <= 70)
-      if not inOurPool and type(inputs) == "table" then
-        local actionPages = actionIdToPages[actionId]
-        if actionPages then
-          -- mappable: false wins across all matching pages (mirrors vanilla formula)
-          local pageMatch = false
-          local conflictMappable = true
-          for pageName in pairs(slotPages) do
-            if actionPages[pageName] ~= nil then
-              pageMatch = true
-              -- vanilla: mappable = groupMappable or (newinputtype ~= 1)
-              local m = actionPages[pageName] or (newinputtype ~= 1)
-              if not m then conflictMappable = false end
-            end
-          end
-          if pageMatch then
-            for _, input in ipairs(inputs) do
-              if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
-                debugLog("EnrichRemapConflicts(b): action %d (pages=[%s]) conflicts - added (mappable=%s)",
-                  actionId, PageSetStr(actionPages), tostring(conflictMappable))
-                table.insert(conflicts, { control = { "actions", actionId }, mappable = conflictMappable })
-                break
+    for _, inputType in ipairs(INPUT_TYPES) do
+      -- "actions" was already fetched above (also needed by case (a)) - reuse
+      -- it instead of calling GetInputActionMap() a second time.
+      local map = nil
+      if inputType == "actions" then
+        map = actions
+      else
+        local mapOk, mapValue = pcall(GET_INPUT_MAP[inputType])
+        if mapOk and (type(mapValue) == "table") then
+          map = mapValue
+        end
+      end
+      if type(map) == "table" then
+        for id, inputs in pairs(map) do
+          local inOurPool = (inputType == "actions") and (id >= 23) and (id <= 70)
+          if not inOurPool and type(inputs) == "table" then
+            local idPages = idToPages[inputType][id]
+            if idPages then
+              -- mappable: false wins across all matching pages (mirrors vanilla formula)
+              local pageMatch = false
+              local conflictMappable = true
+              for pageName in pairs(slotPages) do
+                if idPages[pageName] ~= nil then
+                  pageMatch = true
+                  -- vanilla: mappable = groupMappable or (newinputtype ~= 1)
+                  local m = idPages[pageName] or (newinputtype ~= 1)
+                  if not m then conflictMappable = false end
+                end
+              end
+              if pageMatch then
+                for _, input in ipairs(inputs) do
+                  if input[1] == newinputtype and input[2] == newinputcode and (input[3] or 0) == cmpSgn then
+                    debugLog("EnrichRemapConflicts(b): %s %d (pages=[%s]) conflicts - added (mappable=%s)",
+                      inputType, id, PageSetStr(idPages), tostring(conflictMappable))
+                    table.insert(conflicts, { control = { inputType, id }, mappable = conflictMappable })
+                    break
+                  end
+                end
               end
             end
           end
