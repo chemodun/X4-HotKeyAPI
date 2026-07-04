@@ -171,7 +171,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 ### [8.00.05] - 2026-07-01
 
 - **Added**
-  - FPS area now provides a selected object (the object the player's crosshair is currently on) to `isObjectRequired = true` actions, and correctly skips firing when nothing is targeted.
+  - FPS area now provides a selected object (the object the player's crosshair is currently on) to `isObjectRequired = true` actions.
 
 ### [8.00.04] - 2026-06-30
 
