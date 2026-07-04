@@ -3,12 +3,12 @@
   id="ws_3750545906"
   name="Native Hotkey API"
   author="Chem O`Dun"
-  version="80004"
-  date="2026-06-30"
+  version="80005"
+  date="2026-07-04"
   save="false"
   sync="false"
   enabled="true"
-  lastupdate="1782772905"
+  lastupdate="1783169062"
   description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies.">
   <text language="7"
     description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies."></text>
