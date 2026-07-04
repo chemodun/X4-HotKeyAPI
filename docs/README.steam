@@ -63,6 +63,30 @@ It contains:
 [/list]
 [*] A debug-logging toggle ([b]Enabled[/b]/[b]Disabled[/b]).
 [/list]
+[h2][b]Selected/targeted object[/b][/h2]
+
+Every hotkey fire attempts to resolve a "selected/targeted object" for the
+currently detected area, [b]independent of [b]isObjectRequired[/b][/b]:
+[list]
+[*] [b]'map'[/b] - the map's current selection.
+[*] [b]'pilot'[/b] - the piloted ship's current target.
+[*] [b]'fps'[/b] - whatever the player's crosshair is currently over (soft-target).
+[/list]
+[b]isObjectRequired[/b] only controls whether the hotkey is [i]skipped[/i] when
+nothing is selected/targeted - it does not gate whether the object itself is
+passed once the hotkey does fire. So with [b]isObjectRequired = false[/b] (the
+default), if something happens to be selected/targeted at the moment the key
+is pressed, it is still passed to your callback; [b]isObjectRequired = true[/b]
+only adds "skip firing entirely when there's nothing to pass" on top of the
+exact same lookup.
+[list]
+[*] MD's [b]$actionCue[/b] receives it as [b]$object[/b], an MD component reference.
+[*] Lua's [b]actionLua[/b] receives it as [b]object[/b], the raw component id (a real Lua
+[/list]  value, not a blackboard round trip).
+
+Both are absent/[b]nil[/b] when nothing is selected/targeted for the detected
+area.
+
 [h2][b]MD API[/b][/h2]
 
 [h2]Flow[/h2]
@@ -80,7 +104,7 @@ It contains:
 [*] [b]$area[/b] [i](string, mandatory, no default)[/i] - one or more of [b]'map'[/b], [b]'pilot'[/b], [b]'fps'[/b], separated by [b];[/b] if more than one (e.g. [b]'map;pilot'[/b]) - where the action is allowed to fire and what "selected object" means for [b]$isObjectRequired[/b]. [b]'pilot'[/b] means the player is piloting a ship (no menu open). [b]'fps'[/b] means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported [b]$version[/b] (currently [b]'map'[/b], [b]'pilot'[/b], and [b]'fps'[/b] are all available from version [b]1[/b]) - a future area value added in a later version is only honored for a request that itself declares at least that version.
 [*] [b]$isObjectRequired[/b] [i](bool, optional, default [b]false[/b])[/i] - if [b]true[/b], the action is skipped unless a map selection ([b]'map'[/b]), ship target ([b]'pilot'[/b]), or soft-target crosshair object ([b]'fps'[/b]) is currently present.
 [*] [b]$name[/b] [i](string)[/i] - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
-[*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives [b]param = table[$id = id][/b], plus [b]$object[/b] (an MD component reference) if a selection/target was present.
+[*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives [b]param = table[$id = id][/b], plus [b]$object[/b] (an MD component reference) if a selection/target was present - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above.
 [/list]
 [h2]Debug logging ([b]GetDebugChance[/b]) - recommended for cue-based consumers[/h2]
 
@@ -130,7 +154,7 @@ A shared library, [b]include_actions ref="md.HotkeyApi.GetDebugChance"[/b], comp
 
 Same fields as MD's [b]Register_Action[/b] (using plain Lua values, no [b]$[/b] prefix), plus:
 [list]
-[*] [b]actionLua[/b] [i](function)[/i] - called as [b]actionLua({id, object})[/b] when the hotkey fires and any target requirement is satisfied. [b]object[/b] is the selected/targeted component id (a real Lua value, not a blackboard round trip), or [b]nil[/b] if there wasn't one.
+[*] [b]actionLua[/b] [i](function)[/i] - called as [b]actionLua({id, object})[/b] when the hotkey fires and any target requirement is satisfied. [b]object[/b] is the selected/targeted component id (a real Lua value, not a blackboard round trip), or [b]nil[/b] if there wasn't one - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above.
 [/list]
 Either or both of [b]actionCue[/b] and [b]actionLua[/b] may be set on the same registration; if both are set, only [b]actionLua[/b] fires (MD dispatch is skipped).
 
@@ -157,8 +181,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [h2][b]Limitations[/b][/h2]
 [list]
 [*] [b]48-action hard ceiling.[/b] [b]INPUT_ACTION_*[/b] is a closed enum compiled into the game; this pool cannot be extended.
-[*] [b]Cross-page conflict checking is conservative, not area-aware.[/b] Remapping one of this pool's keys checks for conflicts against every other Controls page, regardless of the hotkey's own [b]area[/b] - this was deliberately simplified after testing showed per-area filtering wasn't reliable to scope correctly.
-[*] This [b]conservative[/b] behavior in addition means that if a player assigns, despite a warning, a key combination that is already bound to a vanilla action, this combination will not be accepted and the player will have to reassign some other key.
+[*] [b]Cross-page conflict checking is area-aware.[/b] Remapping one of this pool's keys only checks for conflicts against the vanilla Controls pages that actually overlap the hotkey's own [b]area[/b] (and the same in reverse, when remapping a vanilla control that collides with one of this pool's keys) - not every page regardless of area.
 [*] Loading a save without some of the mods that registered hotkeys will clear their slots and key bindings, so the player will have to reassign them when they reload with those mods again.
 [*] The keybindings in X4 are not saved in the save file, but stored per "profile". Please note that the keybindings created for one game will be "replicated" to any other save using the same profile.
 [/list]
@@ -174,11 +197,15 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [h2][b]Changelog[/b][/h2]
 
-[h2][8.00.05] - 2026-07-01[/h2]
+[h2][8.00.05] - 2026-07-04[/h2]
 [list]
 [*] [b]Added[/b]
 [list]
-[*] FPS area now provides a selected object (the object the player's crosshair is currently on) to [b]isObjectRequired = true[/b] actions, and correctly skips firing when nothing is targeted.
+[*] FPS area now provides a selected object (the object the player's crosshair is currently on) to [b]isObjectRequired = true[/b] actions.
+[/list]
+[*] [b]Improved[/b]
+[list]
+[*] Keybinding conflict checking is now fully area-aware (only checks vanilla Controls pages overlapping the hotkey's own [b]area[/b]) and key bindings transfer both ways between vanilla controls and this pool's slots. I.e. previously introduced "conservative" conflict checking is now fully removed.
 [/list]
 [/list]
 [h2][8.00.04] - 2026-06-30[/h2]
