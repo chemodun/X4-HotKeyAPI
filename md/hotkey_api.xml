@@ -130,10 +130,10 @@
           detected area is 'other' (some other menu open, or no clear
           context) regardless of this setting, since there is no
           selected-object notion there for isObjectRequired to fall back on -
-          so 'other' is not a valid value to request either. 'fps' likewise
-          never has a selected object, so isObjectRequired is never satisfied
-          while 'fps' is the detected area - the same as 'other' in that one
-          respect, but still its own distinct, requestable area.
+          so 'other' is not a valid value to request either. 'fps' does have
+          a selected-object notion of its own (whatever the player's
+          crosshair is currently over, i.e. the soft-target) - isObjectRequired
+          is checked against that the same way it is for 'map'/'pilot'.
         - Each area value has its own minimum supported $version (currently
           'map', 'pilot', and 'fps' are all available from version 1 - any
           area value introduced in a later version will only be accepted
@@ -143,18 +143,27 @@
       * isObjectRequired = false
         - Boolean. If true, the action is skipped (with a fail-sound) unless a
           map selection ('map'), ship target ('pilot'), or soft-target crosshair
-          object ('fps') is currently present.
+          object ('fps') is currently present. This only gates whether the
+          hotkey fires at all - it does not gate whether $object is passed
+          once it does fire (see actionCue below): with isObjectRequired=false,
+          a selection/target present at the moment the key is pressed is still
+          passed along.
       * name
         - String, display name shown for this action's row in the General
           Controls keybinding list.
       * actionCue
         - Cue reference, signalled when the hotkey fires and any target
-          requirement is satisfied. Receives param=table[$id=id].
+          requirement is satisfied. Receives param=table[$id=id], plus $object
+          (an MD component reference) whenever a selection/target was present
+          for the detected area - independent of isObjectRequired, see above.
       * actionLua
         - Lua-side callback (a function value) - only usable via the direct-Lua
           registration path (HotkeyApi.RegisterAction), not from MD, since MD
           has no way to construct a Lua function reference. Invoked directly
-          from onHotKey with {id, object}, no MD/blackboard involvement.
+          from onHotKey with {id, object}, no MD/blackboard involvement. object
+          is passed the same way as actionCue's $object above - whenever a
+          selection/target was present, independent of isObjectRequired - or
+          nil if there wasn't one.
 
       Usage example:
         ```xml

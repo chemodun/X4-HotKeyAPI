@@ -57,6 +57,30 @@ It contains:
   - Re-enabling a blocked id does not immediately reclaim a slot - press **Apply** to re-run registration for everyone (this also re-checks for orphaned slots, see Clearance below).
 - A debug-logging toggle (**Enabled**/**Disabled**).
 
+## Selected/targeted object
+
+Every hotkey fire attempts to resolve a "selected/targeted object" for the
+currently detected area, **independent of `isObjectRequired`**:
+
+- `'map'` - the map's current selection.
+- `'pilot'` - the piloted ship's current target.
+- `'fps'` - whatever the player's crosshair is currently over (soft-target).
+
+`isObjectRequired` only controls whether the hotkey is *skipped* when
+nothing is selected/targeted - it does not gate whether the object itself is
+passed once the hotkey does fire. So with `isObjectRequired = false` (the
+default), if something happens to be selected/targeted at the moment the key
+is pressed, it is still passed to your callback; `isObjectRequired = true`
+only adds "skip firing entirely when there's nothing to pass" on top of the
+exact same lookup.
+
+- MD's `$actionCue` receives it as `$object`, an MD component reference.
+- Lua's `actionLua` receives it as `object`, the raw component id (a real Lua
+  value, not a blackboard round trip).
+
+Both are absent/`nil` when nothing is selected/targeted for the detected
+area.
+
 ## MD API
 
 ### Flow
@@ -74,7 +98,7 @@ It contains:
 - `$area` *(string, mandatory, no default)* - one or more of `'map'`, `'pilot'`, `'fps'`, separated by `;` if more than one (e.g. `'map;pilot'`) - where the action is allowed to fire and what "selected object" means for `$isObjectRequired`. `'pilot'` means the player is piloting a ship (no menu open). `'fps'` means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported `$version` (currently `'map'`, `'pilot'`, and `'fps'` are all available from version `1`) - a future area value added in a later version is only honored for a request that itself declares at least that version.
 - `$isObjectRequired` *(bool, optional, default `false`)* - if `true`, the action is skipped unless a map selection (`'map'`), ship target (`'pilot'`), or soft-target crosshair object (`'fps'`) is currently present.
 - `$name` *(string)* - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
-- `$actionCue` *(cue reference)* - signalled when the hotkey fires and any target requirement is satisfied. Receives `param = table[$id = id]`, plus `$object` (an MD component reference) if a selection/target was present.
+- `$actionCue` *(cue reference)* - signalled when the hotkey fires and any target requirement is satisfied. Receives `param = table[$id = id]`, plus `$object` (an MD component reference) if a selection/target was present - see [Selected/targeted object](#selectedtargeted-object) above.
 
 ### Debug logging (`GetDebugChance`) - recommended for cue-based consumers
 
@@ -124,7 +148,7 @@ A shared library, `include_actions ref="md.HotkeyApi.GetDebugChance"`, computes 
 
 Same fields as MD's `Register_Action` (using plain Lua values, no `$` prefix), plus:
 
-- `actionLua` *(function)* - called as `actionLua({id, object})` when the hotkey fires and any target requirement is satisfied. `object` is the selected/targeted component id (a real Lua value, not a blackboard round trip), or `nil` if there wasn't one.
+- `actionLua` *(function)* - called as `actionLua({id, object})` when the hotkey fires and any target requirement is satisfied. `object` is the selected/targeted component id (a real Lua value, not a blackboard round trip), or `nil` if there wasn't one - see [Selected/targeted object](#selectedtargeted-object) above.
 
 Either or both of `actionCue` and `actionLua` may be set on the same registration; if both are set, only `actionLua` fires (MD dispatch is skipped).
 
