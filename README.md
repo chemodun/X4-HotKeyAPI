@@ -175,8 +175,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 ## Limitations
 
 - **48-action hard ceiling.** `INPUT_ACTION_*` is a closed enum compiled into the game; this pool cannot be extended.
-- **Cross-page conflict checking is conservative, not area-aware.** Remapping one of this pool's keys checks for conflicts against every other Controls page, regardless of the hotkey's own `area` - this was deliberately simplified after testing showed per-area filtering wasn't reliable to scope correctly.
-- This **conservative** behavior in addition means that if a player assigns, despite a warning, a key combination that is already bound to a vanilla action, this combination will not be accepted and the player will have to reassign some other key.
+- **Cross-page conflict checking is area-aware.** Remapping one of this pool's keys only checks for conflicts against the vanilla Controls pages that actually overlap the hotkey's own `area` (and the same in reverse, when remapping a vanilla control that collides with one of this pool's keys) - not every page regardless of area.
 - Loading a save without some of the mods that registered hotkeys will clear their slots and key bindings, so the player will have to reassign them when they reload with those mods again.
 - The keybindings in X4 are not saved in the save file, but stored per "profile". Please note that the keybindings created for one game will be "replicated" to any other save using the same profile.
 
@@ -192,10 +191,12 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Changelog
 
-### [8.00.05] - 2026-07-01
+### [8.00.05] - 2026-07-04
 
 - **Added**
   - FPS area now provides a selected object (the object the player's crosshair is currently on) to `isObjectRequired = true` actions.
+- **Improved**
+  - Keybinding conflict checking is now fully area-aware (only checks vanilla Controls pages overlapping the hotkey's own `area`) and key bindings transfer both ways between vanilla controls and this pool's slots. I.e. previously introduced "conservative" conflict checking is now fully removed.
 
 ### [8.00.04] - 2026-06-30
 
