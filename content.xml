@@ -3,12 +3,12 @@
   id="ws_3750545906"
   name="Native Hotkey API"
   author="Chem O`Dun"
-  version="80005"
-  date="2026-07-04"
+  version="80006"
+  date="2026-07-06"
   save="false"
   sync="false"
   enabled="true"
-  lastupdate="1783169062"
+  lastupdate="1783367867"
   description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies.">
   <text language="7"
     description="Lets other mods register custom hotkey actions, bindable by the player through the native Options > Controls keybinding UI. MD and direct-Lua registration paths, no external dependencies."></text>
@@ -51,6 +51,9 @@
   <!-- Turkish -->
   <text language="90"
     description="Diğer modların, oyuncunun yerel Seçenekler > Kontroller tuş atama menüsü üzerinden atayabileceği özel kısayol tuşu eylemleri kaydetmesini sağlar. MD ve doğrudan Lua kayıt yolları, harici bağımlılık yok."></text>
+  <!-- Bulgarian -->
+  <text language="359"
+    description="Позволява на други модове да регистрират персонализирани действия с горещи клавиши, които играчът може да присвои чрез родното меню Опции > Контроли. Пътища за регистрация MD и директно Lua, без външни зависимости."></text>
   <!-- Ukrainian -->
   <text language="380"
     description="Дозволяє іншим модам реєструвати власні дії гарячих клавіш, які гравець може призначити через стандартне меню Параметри > Керування. Реєстрація через MD та безпосередньо через Lua, без зовнішніх залежностей."></text>
