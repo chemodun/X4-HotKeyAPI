@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bulgarian -->
+<diff>
+    <add sel="/language">
+        <page id="1972092431" title="Native Hotkey API" descr="" voice="no">
+            <!-- mod identity -->
+            <t id="1">Роден API за горещи клавиши</t>
+            <t id="2">Позволява на други модове да регистрират персонализирани действия с горещи клавиши, които играчът може да присвои чрез родното меню Опции &gt; Контроли.</t>
+
+            <!-- Settings page -->
+            <t id="1000">Управление на горещи клавиши</t>
+            <!-- Hotkey Management submenu -->
+            <t id="1100">Присвояване на горещи клавиши</t>
+
+            <t id="1200">Заявки за горещи клавиши</t>
+
+            <!-- Hotkey Requests page -->
+            <!-- Hotkey Requests page row titles -->
+            <t id="1210">Активирано</t>
+            <t id="1220">Име</t>
+            <t id="1230">Статус</t>
+
+            <!-- Hotkey Requests status texts -->
+            <t id="1231">Наличен</t>
+            <t id="1232">Изчакващ</t>
+            <t id="1233">Блокиран</t>
+            <t id="1234">Присвоен</t>
+            <!-- Hotkey Requests page row buttons -->
+            <t id="1291">&lt; Предишен</t>
+            <t id="1292">Следващ &gt;</t>
+            <t id="1293">Приложи</t>
+
+            <!-- Debug Logging -->
+            <t id="1900">Активиране на отстраняване на грешки в логовете</t>
+            <t id="1901">Активирано</t>
+            <t id="1902">Деактивирано</t>
+        </page>
+    </add>
+</diff>

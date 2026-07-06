@@ -663,10 +663,10 @@ local function GetSelectedObjectForArea(area)
     end
     return nil
   elseif area == "fps" then
-    local softtarget = C.GetSofttarget2()
-    local id = tonumber(softtarget.softtargetID)
+    local softTarget = C.GetSofttarget2()
+    local id = tonumber(softTarget.softtargetID)
     if id and (id ~= 0) and IsValidComponent(id) then
-      return id
+      return id, softTarget
     end
     return nil
   end
@@ -696,7 +696,7 @@ function hotkeyApi.onHotKey(action)
   -- way for incoming requests missing request.version).
   local version = record.version or 1
   if version == 1 then
-    local selected = GetSelectedObjectForArea(currentArea)
+    local selected, softTarget = GetSelectedObjectForArea(currentArea)
     -- Normalized to a real boolean by ValidateRequest at registration time
     -- (accepts MD's 1/0 or a real Lua boolean either way) - no need to
     -- re-check both forms on every single dispatch.
@@ -716,7 +716,7 @@ function hotkeyApi.onHotKey(action)
     -- needed at all (that machinery only exists for the MD boundary).
     if record.actionLua then
       debugLog("onHotKey: dispatching actionLua callback for id '%s' (slot %s)", tostring(record.id), action)
-      local ok, err = pcall(record.actionLua, { id = record.id, object = selected })
+      local ok, err = pcall(record.actionLua, { id = record.id, object = selected, softTarget = softTarget })
       if not ok then
         debugLog("onHotKey: actionLua callback for id '%s' errored: %s", tostring(record.id), tostring(err))
       end

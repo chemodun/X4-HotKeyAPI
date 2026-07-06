@@ -81,6 +81,16 @@ exact same lookup.
 Both are absent/`nil` when nothing is selected/targeted for the detected
 area.
 
+Additionally, Lua's `actionLua` receives in `fps` mode the soft-target data as `softTarget`, a real Lua value (not a blackboard round trip), or `nil` if there wasn't one.
+
+```Lua
+  typedef struct {
+  uint64_t softtargetID;
+  const char* softtargetConnectionName;
+  uint32_t messageID;
+} SofttargetDetails2;
+```
+
 ## MD API
 
 ### Flow
@@ -148,7 +158,7 @@ A shared library, `include_actions ref="md.HotkeyApi.GetDebugChance"`, computes 
 
 Same fields as MD's `Register_Action` (using plain Lua values, no `$` prefix), plus:
 
-- `actionLua` *(function)* - called as `actionLua({id, object})` when the hotkey fires and any target requirement is satisfied. `object` is the selected/targeted component id (a real Lua value, not a blackboard round trip), or `nil` if there wasn't one - see [Selected/targeted object](#selectedtargeted-object) above.
+- `actionLua` *(function)* - called as `actionLua({id, object, softTarget})` when the hotkey fires and any target requirement is satisfied. `object` is the selected/targeted component id (a real Lua value, not a blackboard round trip), or `nil` if there wasn't one - see [Selected/targeted object](#selectedtargeted-object) above. `softTarget` is the soft target data (a real Lua value, not a blackboard round trip), or `nil` if there wasn't one.
 
 Either or both of `actionCue` and `actionLua` may be set on the same registration; if both are set, only `actionLua` fires (MD dispatch is skipped).
 
@@ -190,6 +200,11 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 - [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659) - for the `UI Extensions and HUD` that makes the generic callback hooks this mod relies on possible.
 
 ## Changelog
+
+### [8.00.06] - 2026-07-06
+
+- **Added**
+  - Lua's `actionLua` receives in `fps` mode the soft-target data as `softTarget`, a real Lua value (not a blackboard round trip), or `nil` if there wasn't one.
 
 ### [8.00.05] - 2026-07-04
 
