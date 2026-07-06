@@ -87,6 +87,16 @@ exact same lookup.
 Both are absent/[b]nil[/b] when nothing is selected/targeted for the detected
 area.
 
+Additionally, Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as [b]softTarget[/b], a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
+
+[code=Lua]
+  typedef struct {
+  uint64_t softtargetID;
+  const char* softtargetConnectionName;
+  uint32_t messageID;
+} SofttargetDetails2;
+[/code]
+
 [size=130][u]MD API[/u][/size]
 
 [size=125][u]Flow[/u][/size]
@@ -154,7 +164,7 @@ A shared library, [b]include_actions ref="md.HotkeyApi.GetDebugChance"[/b], comp
 
 Same fields as MD's [b]Register_Action[/b] (using plain Lua values, no [b]$[/b] prefix), plus:
 [list]
-[*] [b]actionLua[/b] [i](function)[/i] - called as [b]actionLua({id, object})[/b] when the hotkey fires and any target requirement is satisfied. [b]object[/b] is the selected/targeted component id (a real Lua value, not a blackboard round trip), or [b]nil[/b] if there wasn't one - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above.
+[*] [b]actionLua[/b] [i](function)[/i] - called as [b]actionLua({id, object, softTarget})[/b] when the hotkey fires and any target requirement is satisfied. [b]object[/b] is the selected/targeted component id (a real Lua value, not a blackboard round trip), or [b]nil[/b] if there wasn't one - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above. [b]softTarget[/b] is the soft target data (a real Lua value, not a blackboard round trip), or [b]nil[/b] if there wasn't one.
 [/list]
 Either or both of [b]actionCue[/b] and [b]actionLua[/b] may be set on the same registration; if both are set, only [b]actionLua[/b] fires (MD dispatch is skipped).
 
@@ -197,6 +207,13 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [size=130][u]Changelog[/u][/size]
 
+[size=125][u][8.00.06] - 2026-07-06[/u][/size]
+[list]
+[*] [b]Added[/b]
+[list]
+[*] Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as [b]softTarget[/b], a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
+[/list]
+[/list]
 [size=125][u][8.00.05] - 2026-07-04[/u][/size]
 [list]
 [*] [b]Added[/b]
