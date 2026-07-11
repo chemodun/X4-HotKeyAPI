@@ -13,7 +13,7 @@ Two integration paths exist, both calling into the same registration/dispatch co
 [*] [b]MD API[/b] - for Mission Director scripts. Uses [b]Register_Action[/b] / [b]Reloaded[/b] cue signals; the registered callback is an MD cue.
 [*] [b]Lua API[/b] - for Lua UI scripts. Call [b]HotkeyApi.RegisterAction(...)[/b] directly; the registered callback is a Lua function, invoked with no MD/blackboard round trip at all.
 [/list]
-A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares a mandatory [b]area[/b] (one or more of [b]'map'[/b], [b]'pilot'[/b], [b]'fps'[/b], [b];[/b]-separated if more than one) describing where it's allowed to fire and what "selected object" means for it, and an optional [b]isObjectRequired[/b] flag to skip firing when there's nothing selected/targeted.
+A hotkey fires once, on press (no separate press/release/repeat events). Each registration declares a mandatory [b]area[/b] (one or more of `'map'`, `'pilot'`, `'fps'`, `;`-separated if more than one) describing where it's allowed to fire and what "selected object" means for it, and an optional [b]isObjectRequired[/b] flag to skip firing when there's nothing selected/targeted.
 
 [size=130][u]Requirements[/u][/size]
 [list]
@@ -66,7 +66,7 @@ It contains:
 [size=130][u]Selected/targeted object[/u][/size]
 
 Every hotkey fire attempts to resolve a "selected/targeted object" for the
-currently detected area, [b]independent of [b]isObjectRequired[/b][/b]:
+currently detected area, [b]independent of `isObjectRequired`[/b]:
 [list]
 [*] [b]'map'[/b] - the map's current selection.
 [*] [b]'pilot'[/b] - the piloted ship's current target.
@@ -80,14 +80,14 @@ is pressed, it is still passed to your callback; [b]isObjectRequired = true[/b]
 only adds "skip firing entirely when there's nothing to pass" on top of the
 exact same lookup.
 [list]
-[*] MD's [b]$actionCue[/b] receives it as [b]$object[/b], an MD component reference.
-[*] Lua's [b]actionLua[/b] receives it as [b]object[/b], the raw component id (a real Lua
+[*] MD's [b]$actionCue[/b] receives it as `$object`, an MD component reference.
+[*] Lua's [b]actionLua[/b] receives it as `object`, the raw component id (a real Lua
 [/list]  value, not a blackboard round trip).
 
-Both are absent/[b]nil[/b] when nothing is selected/targeted for the detected
+Both are absent/`nil` when nothing is selected/targeted for the detected
 area.
 
-Additionally, Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as [b]softTarget[/b], a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
+Additionally, Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as `softTarget`, a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
 
 [code=Lua]
   typedef struct {
@@ -107,18 +107,18 @@ Additionally, Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target
 [/list]   don't survive a Lua reload, so the registration itself doesn't either)
 [list=1][*] When the player presses the assigned key, your callback cue is signalled
 [/list]
-[size=125][u][b]Register_Action[/b] - param fields[/u][/size]
+[size=125][u]`Register_Action` - param fields[/u][/size]
 [list]
 [*] [b]$id[/b] [i](string)[/i] - unique identifier of this action, chosen by your mod. The same id always maps to the same physical hotkey slot once assigned.
-[*] [b]$version[/b] [i](number, optional, default [b]1[/b])[/i] - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
-[*] [b]$area[/b] [i](string, mandatory, no default)[/i] - one or more of [b]'map'[/b], [b]'pilot'[/b], [b]'fps'[/b], separated by [b];[/b] if more than one (e.g. [b]'map;pilot'[/b]) - where the action is allowed to fire and what "selected object" means for [b]$isObjectRequired[/b]. [b]'pilot'[/b] means the player is piloting a ship (no menu open). [b]'fps'[/b] means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported [b]$version[/b] (currently [b]'map'[/b], [b]'pilot'[/b], and [b]'fps'[/b] are all available from version [b]1[/b]) - a future area value added in a later version is only honored for a request that itself declares at least that version.
-[*] [b]$isObjectRequired[/b] [i](bool, optional, default [b]false[/b])[/i] - if [b]true[/b], the action is skipped unless a map selection ([b]'map'[/b]), ship target ([b]'pilot'[/b]), or soft-target crosshair object ([b]'fps'[/b]) is currently present.
+[*] [b]$version[/b] [i](number, optional, default `1`)[/i] - protocol version this request was built for. A version newer than this build supports is rejected outright rather than risk being silently misinterpreted.
+[*] [b]$area[/b] [i](string, mandatory, no default)[/i] - one or more of `'map'`, `'pilot'`, `'fps'`, separated by [b];[/b] if more than one (e.g. `'map;pilot'`) - where the action is allowed to fire and what "selected object" means for `$isObjectRequired`. [b]'pilot'[/b] means the player is piloting a ship (no menu open). [b]'fps'[/b] means the player is on foot/first-person - not in any menu, and not piloting a ship in space (e.g. walking around a station or ship interior). Each area value has its own minimum supported [b]$version[/b] (currently `'map'`, `'pilot'`, and [b]'fps'[/b] are all available from version `1`) - a future area value added in a later version is only honored for a request that itself declares at least that version.
+[*] [b]$isObjectRequired[/b] [i](bool, optional, default `false`)[/i] - if `true`, the action is skipped unless a map selection (`'map'`), ship target (`'pilot'`), or soft-target crosshair object (`'fps'`) is currently present.
 [*] [b]$name[/b] [i](string)[/i] - display name shown for this action's row on the Hotkey Bindings/Hotkey Requests pages.
-[*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives [b]param = table[$id = id][/b], plus [b]$object[/b] (an MD component reference) if a selection/target was present - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above.
+[*] [b]$actionCue[/b] [i](cue reference)[/i] - signalled when the hotkey fires and any target requirement is satisfied. Receives `param = table[$id = id]`, plus [b]$object[/b] (an MD component reference) if a selection/target was present - see [url=https://github.com/chemodun/X4-HotKeyAPI/raw/main/#selectedtargeted-object]Selected/targeted object[/url] above.
 [/list]
-[size=125][u]Debug logging ([b]GetDebugChance[/b]) - recommended for cue-based consumers[/u][/size]
+[size=125][u]Debug logging (`GetDebugChance`) - recommended for cue-based consumers[/u][/size]
 
-A shared library, [b]include_actions ref="md.HotkeyApi.GetDebugChance"[/b], computes [b]$debugChance[/b] ([b]0[/b] or [b]100[/b]) from the player's current debug-logging preference (toggled from the Hotkey Requests page). Any cue - in this mod or a consumer's - can include it once and then use [b]chance="$debugChance"[/b] on its own [b]debug_text[/b] calls, so toggling the option silences everything in lockstep instead of each mod tracking its own flag. Cross-extension references must be fully qualified ([b]ref="md.HotkeyApi.GetDebugChance"[/b]) - MD library references are namespaced per-script, not globally bare-addressable.
+A shared library, `include_actions ref="md.HotkeyApi.GetDebugChance"`, computes [b]$debugChance[/b] (`0` or `100`) from the player's current debug-logging preference (toggled from the Hotkey Requests page). Any cue - in this mod or a consumer's - can include it once and then use [b]chance="$debugChance"[/b] on its own [b]debug_text[/b] calls, so toggling the option silences everything in lockstep instead of each mod tracking its own flag. Cross-extension references must be fully qualified (`ref="md.HotkeyApi.GetDebugChance"`) - MD library references are namespaced per-script, not globally bare-addressable.
 
 [size=125][u]Usage example MD[/u][/size]
 
@@ -160,7 +160,7 @@ A shared library, [b]include_actions ref="md.HotkeyApi.GetDebugChance"[/b], comp
 [*] Your actionLua function is called directly when the assigned key is
 [/list]   pressed - no MD/blackboard round trip at all
 
-[size=125][u][b]HotkeyApi.RegisterAction[/b] - request fields[/u][/size]
+[size=125][u]`HotkeyApi.RegisterAction` - request fields[/u][/size]
 
 Same fields as MD's [b]Register_Action[/b] (using plain Lua values, no [b]$[/b] prefix), plus:
 [list]
@@ -207,11 +207,18 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [size=130][u]Changelog[/u][/size]
 
+[size=125][u][8.00.07] - 2026-07-12[/u][/size]
+[list]
+[*] [b]Improved[/b]
+[list]
+[*] Hotkey refreshment and cleanup.
+[/list]
+[/list]
 [size=125][u][8.00.06] - 2026-07-06[/u][/size]
 [list]
 [*] [b]Added[/b]
 [list]
-[*] Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as [b]softTarget[/b], a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
+[*] Lua's [b]actionLua[/b] receives in [b]fps[/b] mode the soft-target data as `softTarget`, a real Lua value (not a blackboard round trip), or [b]nil[/b] if there wasn't one.
 [/list]
 [/list]
 [size=125][u][8.00.05] - 2026-07-04[/u][/size]
@@ -222,7 +229,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [*] [b]Improved[/b]
 [list]
-[*] Keybinding conflict checking is now fully area-aware (only checks vanilla Controls pages overlapping the hotkey's own [b]area[/b]) and key bindings transfer both ways between vanilla controls and this pool's slots. I.e. previously introduced "conservative" conflict checking is now fully removed.
+[*] Keybinding conflict checking is now fully area-aware (only checks vanilla Controls pages overlapping the hotkey's own `area`) and key bindings transfer both ways between vanilla controls and this pool's slots. I.e. previously introduced "conservative" conflict checking is now fully removed.
 [/list]
 [/list]
 [size=125][u][8.00.04] - 2026-06-30[/u][/size]
