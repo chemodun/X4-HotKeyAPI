@@ -1175,6 +1175,9 @@ end
 local function BroadcastReloaded()
   allRequestNames = {}
   allRequests = {}
+  for slot, used in pairs(usedSlots) do
+    used.confirmed = false
+  end
   AddUITriggeredEvent("HotkeyApi", "reloaded")
   debugLog("BroadcastReloaded: cleared allRequests and raised HotkeyApi/reloaded")
 end
