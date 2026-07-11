@@ -598,7 +598,7 @@ function HotkeyApi.OnDisplayOptions(options, config)
 end
 
 function HotkeyApi.BroadcastReloaded()
-  return hotkeyApi.BroadcastReloaded()
+  hotkeyApi.BroadcastReloaded()
 end
 
 function hotkeyApi.ClearUnconfirmed()
@@ -1183,7 +1183,7 @@ end
 -- and re-broadcasts Reloaded so every consumer re-sends Register_Action,
 -- giving newly-unblocked ids a chance to claim a slot via the normal
 -- registration path.
-local function BroadcastReloaded()
+function hotkeyApi.BroadcastReloaded()
   allRequestNames = {}
   allRequests = {}
   for slot, used in pairs(usedSlots) do
@@ -1197,7 +1197,7 @@ end
 -- showing it again means reopening rather than looking at stale data.
 function hotkeyApi.RequestsPageRefresh()
   debugLog("RequestsPageRefresh: re-broadcasting Reloaded and closing the page")
-  BroadcastReloaded()
+  hotkeyApi.BroadcastReloaded()
   if optionsMenu then
     optionsMenu.onCloseElement("back")
   end
@@ -1412,7 +1412,7 @@ local function Init()
   -- and (re-)send their registration in response.
   Helper.addDelayedOneTimeCallbackOnUpdate(
     function()
-      BroadcastReloaded()
+      hotkeyApi.BroadcastReloaded()
     end, false, getElapsedTime() + 3)
 end
 
