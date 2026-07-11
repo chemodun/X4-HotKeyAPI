@@ -538,7 +538,7 @@ local function ProcessRegistration(request)
   }
   usedSlots[slot] = { id = normalized.id, confirmed = true }
 
-  if optionsMenu and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
+  if optionsMenu and optionsMenu.shown and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
   end
 end
@@ -610,6 +610,9 @@ function hotkeyApi.ClearUnconfirmed()
       usedSlots[slot] = nil
       boundHotkeys[slot] = nil
     end
+  end
+  if optionsMenu and optionsMenu.shown and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
+    optionsMenu.refresh()
   end
 end
 
@@ -1328,7 +1331,7 @@ function hotkeyApi.OnRegisterRequest()
     function()
       debugLog("OnRegisterRequest: Registration is finished. Clearing unconfirmed (stale) used slots.")
       hotkeyApi.ClearUnconfirmed()
-    end, false, getElapsedTime() + 3)
+    end, false, getElapsedTime() + 1.3)
 end
 
 local function Init()
