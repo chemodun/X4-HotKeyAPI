@@ -201,6 +201,11 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Changelog
 
+### [8.00.07] - 2026-07-12
+
+- **Improved**
+  - Hotkey refreshment and cleanup.
+
 ### [8.00.06] - 2026-07-06
 
 - **Added**
