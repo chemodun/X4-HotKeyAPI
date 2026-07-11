@@ -578,7 +578,10 @@ end
 --       actionLua = function(params) ... end,
 --     })
 --   end)
-HotkeyApi = HotkeyApi or {}
+HotkeyApi = HotkeyApi or
+    {
+      managementPageId = MANAGEMENT_PAGE_ID
+    }
 
 function HotkeyApi.RegisterAction(request)
   if not (type(request) == "table" and type(request.id) == "string") then
@@ -588,6 +591,14 @@ function HotkeyApi.RegisterAction(request)
     request.actionCue = nil
   end
   return ProcessRegistration(request)
+end
+
+function HotkeyApi.OnDisplayOptions(options, config)
+  return hotkeyApi.OnDisplayOptions(options, config)
+end
+
+function HotkeyApi.BroadcastReloaded()
+  return hotkeyApi.BroadcastReloaded()
 end
 
 function hotkeyApi.ClearUnconfirmed()
