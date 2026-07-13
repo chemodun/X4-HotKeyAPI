@@ -207,6 +207,13 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [h2][b]Changelog[/b][/h2]
 
+[h2][8.00.08] - 2026-07-14[/h2]
+[list]
+[*] [b]Fixed[/b]
+[list]
+[*] First time clearance of vanilla slots bindings on game start or load
+[/list]
+[/list]
 [h2][8.00.07] - 2026-07-12[/h2]
 [list]
 [*] [b]Improved[/b]
