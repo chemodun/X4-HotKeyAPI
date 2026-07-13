@@ -43,15 +43,19 @@ local API_VERSION = 1
 -- so far) until LoadDebugEnabled() restores the player's actual choice.
 local debugEnabled = false
 
-local function debugLog(fmt, ...)
-  if not debugEnabled then
-    return
-  end
+local infoLog = function(fmt, ...)
   if select("#", ...) > 0 then
     DebugError("Hotkey API: " .. string.format(fmt, ...))
   else
     DebugError("Hotkey API: " .. fmt)
   end
+end
+
+local function debugLog(fmt, ...)
+  if not debugEnabled then
+    return
+  end
+  infoLog(fmt, ...)
 end
 
 -- Working pool: DEBUG_0-9, DEBUG_A-Z, DEBUG_F1-F12 (48 actions), in the exact
@@ -352,15 +356,13 @@ end
 -- at startup, before notifying md, so unclaimed slots never carry a leftover
 -- binding into a fresh session regardless of whether anything ever claims
 -- them.
-local function ClearAllUnboundSlots()
+local function ClearAllSlotsFirstTime()
   local clearedCount = 0
   for _, slot in ipairs(POOL) do
-    if usedSlots[slot] == nil then
-      clearedCount = clearedCount + 1
-      ClearSlotBinding(slot)
-    end
+    clearedCount = clearedCount + 1
+    ClearSlotBinding(slot)
   end
-  debugLog("ClearAllUnboundSlots: checked %d unbound slot(s) out of %d pool slot(s)", clearedCount, #POOL)
+  infoLog("ClearAllSlotsFirstTime: cleared %d slot(s) out of %d pool slot(s)", clearedCount, #POOL)
 end
 
 
@@ -1344,7 +1346,7 @@ local function Init()
   __NATIVE_HOTKEY_API_DATA.debugEnabled = __NATIVE_HOTKEY_API_DATA.debugEnabled or false
   debugEnabled = __NATIVE_HOTKEY_API_DATA.debugEnabled
   SaveDebugEnabled()
-  debugLog("Initializing Native Hotkey API.")
+  infoLog("Initializing Native Hotkey API.")
 
   MigrateFromBlackboardIfNeeded()
 
@@ -1385,6 +1387,9 @@ local function Init()
     -- gameoptions.xpl without needing a callback.
     optionsMenu.registerCallback("remapInput_resolveConflicts", hotkeyApi.ResolveConflicts)
     debugLog("Init: registered remapInput_resolveConflicts callback")
+    infoLog("Init: OptionsMenu found and all callbacks registered")
+  else
+    infoLog("Init: OptionsMenu not found or registerCallback missing - skipping callback registration")
   end
 
   SetScript("onHotkey", hotkeyApi.onHotKey)
@@ -1402,8 +1407,8 @@ local function Init()
   -- after this first sweep, normal slot-claim/free bookkeeping (ProcessRegistration,
   -- ClearUnconfirmed, OnToggleRequestEnabled) already keeps unused slots clean.
   if not __NATIVE_HOTKEY_API_DATA.initiallyCleared then
-    debugLog("Init: first run on this profile - running the one-time ClearAllUnboundSlots sweep")
-    ClearAllUnboundSlots()
+    infoLog("Init: first run on this profile - running the one-time ClearAllUnboundSlots sweep")
+    ClearAllSlotsFirstTime()
     __NATIVE_HOTKEY_API_DATA.initiallyCleared = true
   else
     debugLog("Init: one-time sweep already done on a previous run - skipping ClearAllUnboundSlots")
@@ -1417,6 +1422,7 @@ local function Init()
     function()
       hotkeyApi.BroadcastReloaded()
     end, false, getElapsedTime() + 3)
+  infoLog("Init: Initialization complete")
 end
 
 -- Replaces sn_mod_support_apis' Register_OnLoad_Init (dropping that
