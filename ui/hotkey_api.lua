@@ -11,6 +11,7 @@
 -- always-active INPUT_CONTEXT_ADDON_DEBUGLOG context), and feeds the
 -- General Controls page via OnDisplayControlsOrder.
 
+---@diagnostic disable-next-line: unresolved-require
 local ffi = require("ffi")
 local C = ffi.C
 ffi.cdef [[
@@ -114,9 +115,12 @@ __NATIVE_HOTKEY_API_DATA = __NATIVE_HOTKEY_API_DATA or {}
 
 local hotkeyApi = {}
 
-local mapMenu = nil
-local optionsMenu = nil
-local playerId = nil
+---@type table?
+local mapMenu
+---@type table?
+local optionsMenu
+---@type userdata
+local playerId
 
 -- boundHotkeys: keyed by slot (a POOL action-id string) ->
 -- {id, area, isObjectRequired, name, actionCue, actionLua, version, confirmed}.
@@ -394,8 +398,8 @@ local function ParseAreas(areaString, requestVersion)
     return nil
   end
   local areas = {}
-  for token in areaString:gmatch("[^;]+") do
-    token = token:match("^%s*(.-)%s*$")
+  for rawToken in areaString:gmatch("[^;]+") do
+    local token = rawToken:match("^%s*(.-)%s*$")
     local minVersion = AREA_MIN_VERSION[token]
     if (not minVersion) or (requestVersion < minVersion) then
       return nil
@@ -478,6 +482,21 @@ local function ValidateRequest(request)
   }
 end
 
+-- Consumers that keep their own copy of the registry (e.g. a core UI script,
+-- which cannot reach boundHotkeys at all) register here and get told whenever
+-- a slot/id/name pairing or the debug flag changes. Keyed by consumer id, so
+-- re-registering after a Lua reload replaces rather than accumulates.
+local changeListeners = {}
+
+local function NotifyChanged()
+  for key, fn in pairs(changeListeners) do
+    local ok, err = pcall(fn)
+    if not ok then
+      infoLog("change listener '%s' failed: %s", tostring(key), tostring(err))
+    end
+  end
+end
+
 -- Shared by both registration entry points (MD's Register_Action, via
 -- OnRegisterAction/GetNextRequest below, and the direct-Lua HotkeyApi.
 -- RegisterAction global) - everything from here on is source-agnostic.
@@ -510,6 +529,7 @@ local function ProcessRegistration(request)
       boundHotkeys[boundSlot] = nil
       usedSlots[boundSlot] = nil
       ClearSlotBinding(boundSlot)
+      NotifyChanged()
     end
     debugLog("ProcessRegistration: id '%s' is blocked - skipping slot claim", normalized.id)
     return
@@ -539,6 +559,7 @@ local function ProcessRegistration(request)
     confirmed = true,
   }
   usedSlots[slot] = { id = normalized.id, confirmed = true }
+  NotifyChanged()
 
   if optionsMenu and optionsMenu.shown and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
@@ -595,6 +616,34 @@ function HotkeyApi.RegisterAction(request)
   return ProcessRegistration(request)
 end
 
+-- Registry inspection for consumers that mirror it somewhere this file cannot
+-- reach - notably an isolated ui/core/lua/*.xpl script, which has no access to
+-- boundHotkeys, ReadText or the blackboard.
+-- numericId is the input-map id (23-70), i.e. what GetCompassMenuMappings and
+-- gameoptions' controlsorder rows carry - not the pool slot name.
+function HotkeyApi.GetActionNameByInputId(numericId)
+  local slot = POOL_NUMERIC_IDS_REVERSE[numericId]
+  local record = slot and boundHotkeys[slot]
+  return record and record.name or nil
+end
+
+function HotkeyApi.IsDebugEnabled()
+  return debugEnabled
+end
+
+-- fn takes no arguments and is called whenever a slot/id/name pairing or the
+-- debug flag changes; read the current state back through the getters above.
+-- key is the caller's own mod id - re-registering replaces, so a Lua reload
+-- never leaves a dead closure behind.
+function HotkeyApi.RegisterOnChanged(key, fn)
+  if (type(key) ~= "string") or (type(fn) ~= "function") then
+    infoLog("RegisterOnChanged: invalid arguments - listener not registered")
+    return
+  end
+  changeListeners[key] = fn
+  debugLog("RegisterOnChanged: listener '%s' registered", key)
+end
+
 function HotkeyApi.OnDisplayOptions(options, config)
   return hotkeyApi.OnDisplayOptions(options, config)
 end
@@ -605,13 +654,18 @@ end
 
 function hotkeyApi.ClearUnconfirmed()
   debugLog("Clearance: clearing not confirmed (stale) used slots")
+  local cleared = false
   for slot, used in pairs(usedSlots) do
     if not used.confirmed then
       debugLog("Clearance: slot %s for id '%s' was not confirmed - clearing", slot, tostring(used.id))
       ClearSlotBinding(slot)
       usedSlots[slot] = nil
       boundHotkeys[slot] = nil
+      cleared = true
     end
+  end
+  if cleared then
+    NotifyChanged()
   end
   if optionsMenu and optionsMenu.shown and ((optionsMenu.currentOption == CONTROLS_PAGE_ID) or (optionsMenu.currentOption == REQUESTS_PAGE_ID)) then
     optionsMenu.refresh()
@@ -1162,6 +1216,7 @@ function hotkeyApi.OnToggleRequestEnabled(id, checked)
     end
   end
   hotkeyApi.ClearUnconfirmed()
+  NotifyChanged()
   if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
     optionsMenu.refresh()
   end
@@ -1177,6 +1232,7 @@ function hotkeyApi.OnToggleDebugEnabled(checked)
   __NATIVE_HOTKEY_API_DATA.debugEnabled = checked
   SaveDebugEnabled()
   DebugError("Hotkey API: debug logging " .. (checked and "enabled" or "disabled"))
+  NotifyChanged()
 
   if optionsMenu and (optionsMenu.currentOption == REQUESTS_PAGE_ID) then
     optionsMenu.refresh()
@@ -1191,7 +1247,7 @@ end
 function hotkeyApi.BroadcastReloaded()
   allRequestNames = {}
   allRequests = {}
-  for slot, used in pairs(usedSlots) do
+  for _, used in pairs(usedSlots) do
     used.confirmed = false
   end
   AddUITriggeredEvent("HotkeyApi", "reloaded")

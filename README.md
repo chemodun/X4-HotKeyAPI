@@ -178,6 +178,14 @@ RegisterEvent("HotkeyApi.Register_Request", function()
 end)
 ```
 
+### Registry inspection (Lua)
+
+For consumers that keep their own copy of the registry somewhere the API cannot reach - most notably an isolated `ui/core/lua/*.xpl` core script, which has no access to the registry, `ReadText` or the blackboard.
+
+- `HotkeyApi.GetActionNameByInputId(numericId)` - the registered display name for an input-map id, or `nil` if that id currently holds no hotkey. `numericId` is what `GetCompassMenuMappings` and the Controls page's `controlsorder` rows carry (23-70), not the pool slot name.
+- `HotkeyApi.IsDebugEnabled()` - the state of the single Debug Logging toggle, so a consumer can gate its own logging on the same switch.
+- `HotkeyApi.RegisterOnChanged(key, callback)` - `callback` takes no arguments and fires whenever a slot/id/name pairing or the debug flag changes; read the current state back through the two getters above. `key` is the consumer's own mod id, and re-registering under the same key replaces the previous callback, so a Lua reload never leaves a dead closure behind.
+
 ## Orphaned-slot reclaiming (Clearance)
 
 Every slot loaded from a previous session starts each reload marked unconfirmed; registering again marks it confirmed. Ten seconds after every `Reloaded` broadcast (long enough for every consumer to have responded), a `Clearance` sweep clears the key binding and frees the slot of anything still unconfirmed - e.g. a mod that was removed, or stopped registering that id. This runs automatically; no action needed from consumers.
@@ -200,6 +208,11 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 - [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659) - for the `UI Extensions and HUD` that makes the generic callback hooks this mod relies on possible.
 
 ## Changelog
+
+### [8.00.09] - 2026-08-08
+
+- **Added**
+  - Lua API for mods that keep their own copy of the registry: `HotkeyApi.GetActionNameByInputId(numericId)`, `HotkeyApi.IsDebugEnabled()` and `HotkeyApi.RegisterOnChanged(key, callback)`. Intended for consumers that cannot reach the registry directly, such as an isolated `ui/core/lua/*.xpl` script.
 
 ### [8.00.08] - 2026-07-14
 
