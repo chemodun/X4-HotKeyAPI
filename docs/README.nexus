@@ -211,6 +211,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [size=3][u][b]Acknowledgements[/b][/u][/size]
 [list]
 [*] [url=https://www.egosoft.com]EGOSOFT[/url] - for the X series.
+[*] [url=https://www.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url] - for the [b]UI Extensions and HUD[/b] that makes the generic callback hooks this mod relies on possible.
 [/list]
 [size=3][u][b]Changelog[/b][/u][/size]
 
