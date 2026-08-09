@@ -17,11 +17,11 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 [size=3][u][b]Requirements[/b][/u][/size]
 [list]
-[*] [b]X4: Foundations[/b]: Version [b]8.00HF4[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v8.0.4.10[/b] or higher by [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
+[*] [b]X4: Foundations[/b]: Version [b]8.00HF4[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v8.0.4.10[/b] or higher by [url=https://www.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
 [list]
 [*] Available on Nexus Mods: [url=https://www.nexusmods.com/x4foundations/mods/552]UI Extensions and HUD[/url]
 [/list]
-[*] [b]X4: Foundations[/b]: Version [b]9.00[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v9.0.0.7[/b] or higher by [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
+[*] [b]X4: Foundations[/b]: Version [b]9.00[/b] or higher and [b]UI Extensions and HUD[/b]: Version [b]v9.0.0.7[/b] or higher by [url=https://www.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url].
 [list]
 [*] Available on Nexus Mods: [url=https://www.nexusmods.com/x4foundations/mods/552]UI Extensions and HUD[/url]
 [/list]
@@ -205,17 +205,16 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [size=3][u][b]Credits[/b][/u][/size]
 [list]
-[*] [b]Author[/b]: Chem O`Dun, on [url=https://next.nexusmods.com/profile/ChemODun/mods?gameId=2659]Nexus Mods[/url] and [url=https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160]Steam Workshop[/url]
+[*] [b]Author[/b]: Chem O`Dun, on [url=https://www.nexusmods.com/profile/ChemODun/mods?gameId=2659]Nexus Mods[/url] and [url=https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160]Steam Workshop[/url]
 [*] [i]"X4: Foundations"[/i] is a trademark of [url=https://www.egosoft.com]Egosoft[/url].
 [/list]
 [size=3][u][b]Acknowledgements[/b][/u][/size]
 [list]
 [*] [url=https://www.egosoft.com]EGOSOFT[/url] - for the X series.
-[*] [url=https://next.nexusmods.com/profile/kuertee?gameId=2659]kuertee[/url] - for the [b]UI Extensions and HUD[/b] that makes the generic callback hooks this mod relies on possible.
 [/list]
 [size=3][u][b]Changelog[/b][/u][/size]
 
-[size=3][u][i][8.00.09] - 2026-08-08[/i][/u][/size]
+[size=3][u][i][8.00.09] - 2026-08-09[/i][/u][/size]
 [list]
 [*] [b]Added[/b]
 [list]
