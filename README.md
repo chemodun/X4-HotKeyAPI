@@ -17,9 +17,9 @@ A hotkey fires once, on press (no separate press/release/repeat events). Each re
 
 ## Requirements
 
-- **X4: Foundations**: Version **8.00HF4** or higher and **UI Extensions and HUD**: Version **v8.0.4.10** or higher by [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659).
+- **X4: Foundations**: Version **8.00HF4** or higher and **UI Extensions and HUD**: Version **v8.0.4.10** or higher by [kuertee](https://www.nexusmods.com/profile/kuertee?gameId=2659).
   - Available on Nexus Mods: [UI Extensions and HUD](https://www.nexusmods.com/x4foundations/mods/552)
-- **X4: Foundations**: Version **9.00** or higher and **UI Extensions and HUD**: Version **v9.0.0.7** or higher by [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659).
+- **X4: Foundations**: Version **9.00** or higher and **UI Extensions and HUD**: Version **v9.0.0.7** or higher by [kuertee](https://www.nexusmods.com/profile/kuertee?gameId=2659).
   - Available on Nexus Mods: [UI Extensions and HUD](https://www.nexusmods.com/x4foundations/mods/552)
 
 ## Installation
@@ -199,17 +199,16 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 
 ## Credits
 
-- **Author**: Chem O`Dun, on [Nexus Mods](https://next.nexusmods.com/profile/ChemODun/mods?gameId=2659) and [Steam Workshop](https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160)
+- **Author**: Chem O`Dun, on [Nexus Mods](https://www.nexusmods.com/profile/ChemODun/mods?gameId=2659) and [Steam Workshop](https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160)
 - *"X4: Foundations"* is a trademark of [Egosoft](https://www.egosoft.com).
 
 ## Acknowledgements
 
 - [EGOSOFT](https://www.egosoft.com) - for the X series.
-- [kuertee](https://next.nexusmods.com/profile/kuertee?gameId=2659) - for the `UI Extensions and HUD` that makes the generic callback hooks this mod relies on possible.
 
 ## Changelog
 
-### [8.00.09] - 2026-08-08
+### [8.00.09] - 2026-08-09
 
 - **Added**
   - Lua API for mods that keep their own copy of the registry: `HotkeyApi.GetActionNameByInputId(numericId)`, `HotkeyApi.IsDebugEnabled()` and `HotkeyApi.RegisterOnChanged(key, callback)`. Intended for consumers that cannot reach the registry directly, such as an isolated `ui/core/lua/*.xpl` script.
