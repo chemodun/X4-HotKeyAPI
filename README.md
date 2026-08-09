@@ -211,7 +211,7 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 ### [8.00.09] - 2026-08-09
 
 - **Added**
-  - Lua API for mods that keep their own copy of the registry: `HotkeyApi.GetActionNameByInputId(numericId)`, `HotkeyApi.IsDebugEnabled()` and `HotkeyApi.RegisterOnChanged(key, callback)`. Intended for consumers that cannot reach the registry directly, such as an isolated `ui/core/lua/*.xpl` script.
+  - Lua API for mods that keep their own copy of the registry: `HotkeyApi.GetActionNameByInputId(numericId)`, `HotkeyApi.IsDebugEnabled()` and `HotkeyApi.RegisterOnChanged(key, callback)`. Currently only used by the `Hotkey Names on Radial Menu` mod.
 
 ### [8.00.08] - 2026-07-14
 
