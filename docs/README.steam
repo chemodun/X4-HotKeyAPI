@@ -184,6 +184,14 @@ RegisterEvent("HotkeyApi.Register_Request", function()
 end)
 [/code]
 
+[h2]Registry inspection (Lua)[/h2]
+
+For consumers that keep their own copy of the registry somewhere the API cannot reach - most notably an isolated [b]ui/core/lua/*.xpl[/b] core script, which has no access to the registry, [b]ReadText[/b] or the blackboard.
+[list]
+[*] [b]HotkeyApi.GetActionNameByInputId(numericId)[/b] - the registered display name for an input-map id, or [b]nil[/b] if that id currently holds no hotkey. [b]numericId[/b] is what [b]GetCompassMenuMappings[/b] and the Controls page's [b]controlsorder[/b] rows carry (23-70), not the pool slot name.
+[*] [b]HotkeyApi.IsDebugEnabled()[/b] - the state of the single Debug Logging toggle, so a consumer can gate its own logging on the same switch.
+[*] [b]HotkeyApi.RegisterOnChanged(key, callback)[/b] - [b]callback[/b] takes no arguments and fires whenever a slot/id/name pairing or the debug flag changes; read the current state back through the two getters above. [b]key[/b] is the consumer's own mod id, and re-registering under the same key replaces the previous callback, so a Lua reload never leaves a dead closure behind.
+[/list]
 [h2][b]Orphaned-slot reclaiming (Clearance)[/b][/h2]
 
 Every slot loaded from a previous session starts each reload marked unconfirmed; registering again marks it confirmed. Ten seconds after every [b]Reloaded[/b] broadcast (long enough for every consumer to have responded), a [b]Clearance[/b] sweep clears the key binding and frees the slot of anything still unconfirmed - e.g. a mod that was removed, or stopped registering that id. This runs automatically; no action needed from consumers.
@@ -207,6 +215,13 @@ Every slot loaded from a previous session starts each reload marked unconfirmed;
 [/list]
 [h2][b]Changelog[/b][/h2]
 
+[h2][8.00.09] - 2026-08-08[/h2]
+[list]
+[*] [b]Added[/b]
+[list]
+[*] Lua API for mods that keep their own copy of the registry: `HotkeyApi.GetActionNameByInputId(numericId)`, [b]HotkeyApi.IsDebugEnabled()[/b] and `HotkeyApi.RegisterOnChanged(key, callback)`. Intended for consumers that cannot reach the registry directly, such as an isolated [b]ui/core/lua/*.xpl[/b] script.
+[/list]
+[/list]
 [h2][8.00.08] - 2026-07-14[/h2]
 [list]
 [*] [b]Fixed[/b]
